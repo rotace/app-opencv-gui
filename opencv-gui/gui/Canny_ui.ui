@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Form</class>
+ <widget class="QWidget" name="Form">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>381</width>
+    <height>301</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="1" column="0">
+    <widget class="QWidget" name="widget_2" native="true">
+     <layout class="QGridLayout" name="gridLayout_3">
+      <item row="0" column="0">
+       <widget class="QLabel" name="labelMin">
+        <property name="text">
+         <string>min</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QSlider" name="horizontalSliderMin">
+        <property name="maximum">
+         <number>255</number>
+        </property>
+        <property name="value">
+         <number>100</number>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QSpinBox" name="spinBoxMin">
+        <property name="maximum">
+         <number>255</number>
+        </property>
+        <property name="value">
+         <number>100</number>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="labelMax">
+        <property name="text">
+         <string>max</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QSlider" name="horizontalSliderMax">
+        <property name="maximum">
+         <number>255</number>
+        </property>
+        <property name="value">
+         <number>200</number>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2">
+       <widget class="QSpinBox" name="spinBoxMax">
+        <property name="maximum">
+         <number>255</number>
+        </property>
+        <property name="value">
+         <number>200</number>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="0" column="0">
+    <widget class="QWidget" name="widget_1" native="true">
+     <layout class="QGridLayout" name="gridLayout_2"/>
+     <zorder>widget_2</zorder>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>horizontalSliderMin</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>spinBoxMin</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>265</x>
+     <y>195</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>408</x>
+     <y>194</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>spinBoxMin</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>horizontalSliderMin</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>408</x>
+     <y>194</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>318</x>
+     <y>195</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>horizontalSliderMax</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>spinBoxMax</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>252</x>
+     <y>206</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>355</x>
+     <y>205</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>spinBoxMax</sender>
+   <signal>valueChanged(int)</signal>
+   <receiver>horizontalSliderMax</receiver>
+   <slot>setValue(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>408</x>
+     <y>229</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>316</x>
+     <y>230</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>
