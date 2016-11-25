@@ -100,7 +100,7 @@
                 <x>0</x>
                 <y>0</y>
                 <width>218</width>
-                <height>130</height>
+                <height>79</height>
                </rect>
               </property>
               <property name="accessibleName">
@@ -145,8 +145,10 @@
      <string>module</string>
     </property>
     <addaction name="actionCanny"/>
-    <addaction name="actionUserCode"/>
     <addaction name="actionCvtColor"/>
+    <addaction name="actionThreshold"/>
+    <addaction name="actionFindContours"/>
+    <addaction name="actionDrawContours"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menuFilter"/>
@@ -177,14 +179,24 @@
     <string>Canny</string>
    </property>
   </action>
-  <action name="actionUserCode">
-   <property name="text">
-    <string>UserCode</string>
-   </property>
-  </action>
   <action name="actionCvtColor">
    <property name="text">
     <string>cvtColor</string>
+   </property>
+  </action>
+  <action name="actionThreshold">
+   <property name="text">
+    <string>threshold</string>
+   </property>
+  </action>
+  <action name="actionFindContours">
+   <property name="text">
+    <string>findContours</string>
+   </property>
+  </action>
+  <action name="actionDrawContours">
+   <property name="text">
+    <string>drawContours</string>
    </property>
   </action>
  </widget>

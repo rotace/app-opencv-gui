@@ -89,7 +89,6 @@
    <item row="0" column="0">
     <widget class="QWidget" name="widget_1" native="true">
      <layout class="QGridLayout" name="gridLayout_2"/>
-     <zorder>widget_2</zorder>
     </widget>
    </item>
   </layout>
