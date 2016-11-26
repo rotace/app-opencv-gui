@@ -3,13 +3,13 @@ from xml.etree import ElementTree
 
 import imageprocess as ip
 import names as nm
-import common_ui
-import input_ui
-import canny_ui
-import cvt_color_ui
-import threshold_ui
-import find_contours_ui
-import draw_contours_ui
+from gui import common_ui
+from gui import input_ui
+from gui import canny_ui
+from gui import cvt_color_ui
+from gui import threshold_ui
+from gui import find_contours_ui
+from gui import draw_contours_ui
 
 
 class commonForm(QtWidgets.QWidget, common_ui.Ui_Form):

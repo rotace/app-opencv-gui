@@ -1,9 +1,12 @@
 import sys
 from PyQt5 import QtGui, QtWidgets, QtCore
 import cv2
-from gui import forms, main_window
-import gui.names as nm
+from gui import main_window
+import forms
+import names as nm
 import imageprocess as ip
+
+assert(cv2.__version__ == '2.4.11')
 
 
 class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
