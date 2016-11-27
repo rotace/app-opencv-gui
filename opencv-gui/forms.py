@@ -55,12 +55,12 @@ class inputForm(AbstractForm, input_ui.Ui_Form):
 
     def get_xml_element(self):
         root = ElementTree.Element('module')
+        root.set('name', nm.Module.Input.name)
         root_cmn = ElementTree.SubElement(root, 'common')
         elem1 = ElementTree.SubElement(root_cmn, 'picture_number')
         elem1.text = str(0)
         elem2 = ElementTree.SubElement(root_cmn, 'contour_number')
         elem2.text = str(0)
-        root.set('name', nm.Module.Input)
         return root
 
 
@@ -78,8 +78,8 @@ class CannyForm(AbstractForm, canny_ui.Ui_Form):
 
     def get_xml_element(self):
         root = ElementTree.Element('module')
+        root.set('name', nm.Module.Canny.name)
         root.append(self.commonForm.get_xml_element())
-        root.set('name', nm.Module.Canny)
         elem1 = ElementTree.SubElement(root, 'min')
         elem1.text = str(self.spinBoxMin.value())
         elem2 = ElementTree.SubElement(root, 'max')
@@ -103,8 +103,8 @@ class cvtColorForm(AbstractForm, cvt_color_ui.Ui_Form):
 
     def get_xml_element(self):
         root = ElementTree.Element('module')
+        root.set('name', nm.Module.CvtColor.name)
         root.append(self.commonForm.get_xml_element())
-        root.set('name', nm.Module.CvtColor)
         elem1 = ElementTree.SubElement(root, 'code')
         elem1.text = str(self.comboBox.currentText())
         return root
@@ -126,8 +126,8 @@ class thresholdForm(AbstractForm, threshold_ui.Ui_Form):
 
     def get_xml_element(self):
         root = ElementTree.Element('module')
+        root.set('name', nm.Module.Thresh.name)
         root.append(self.commonForm.get_xml_element())
-        root.set('name', nm.Module.Thresh)
         elem1 = ElementTree.SubElement(root, 'thresh')
         elem1.text = str(self.spinBoxThresh.value())
         elem2 = ElementTree.SubElement(root, 'maxVal')
@@ -155,8 +155,8 @@ class findContoursForm(AbstractForm, find_contours_ui.Ui_Form):
 
     def get_xml_element(self):
         root = ElementTree.Element('module')
+        root.set('name', nm.Module.FindCnt.name)
         root.append(self.commonForm.get_xml_element())
-        root.set('name', nm.Module.FindCnt)
         elem1 = ElementTree.SubElement(root, 'mode')
         elem1.text = str(self.comboBoxMode.currentText())
         elem2 = ElementTree.SubElement(root, 'method')
@@ -178,6 +178,6 @@ class drawContoursForm(AbstractForm, draw_contours_ui.Ui_Form):
 
     def get_xml_element(self):
         root = ElementTree.Element('module')
+        root.set('name', nm.Module.DrawCnt.name)
         root.append(self.commonForm.get_xml_element())
-        root.set('name', nm.Module.DrawCnt)
         return root
