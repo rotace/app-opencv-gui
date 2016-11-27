@@ -1,4 +1,4 @@
 # myapp
 
 ## opencv-gui
-OpenCVのGUI-frontend
+OpenCVのGUI-frontend  
