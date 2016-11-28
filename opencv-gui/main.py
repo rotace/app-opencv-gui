@@ -27,6 +27,11 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
         self.actionThreshold.triggered.connect(self.add_form_threshold)
         self.actionFindContours.triggered.connect(self.add_form_find_contours)
         self.actionDrawContours.triggered.connect(self.add_form_draw_contours)
+
+        self.toolButtonToggle.setCheckable(True)
+        self.toolButtonToggle.toggled.connect(self.toggle_video)
+        self.toolButtonCapture.clicked.connect(self.update_image)
+        self.toolButtonRefresh.clicked.connect(self.refresh_image)
         self.pushButtonDelete.clicked.connect(lambda: self.del_form())
         self.show()
 
@@ -105,6 +110,16 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
         self.toolBox.setCurrentIndex(index)
         self.update_form()
 
+    def toggle_video(self, checked):
+        if checked:
+            self.toolButtonCapture.setEnabled(True)
+            self.toolButtonRefresh.setEnabled(True)
+            self.timer.stop()
+        else:
+            self.toolButtonCapture.setEnabled(False)
+            self.toolButtonRefresh.setEnabled(False)
+            self.timer.start()
+
     def del_form(self):
         index = self.toolBox.currentIndex()
         if index == -1 or index == 0:
@@ -122,11 +137,13 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
             form.set_image_label_list(image_label_list)
 
     def update_image(self):
-        success, raw_image = self.capture.read()
+        success, self.raw_image = self.capture.read()
         assert(success)
-        obj_img = ip.ImageObj(raw_image, ip.Color.BGR)
+        obj_img = ip.ImageObj(self.raw_image, ip.Color.BGR)
         self.image_list[0] = ip.cvt_color(obj_img, ip.Color.RGB)
+        self.refresh_image()
 
+    def refresh_image(self):
         for (index, form) in enumerate(self.form_list):
             root = form.get_xml_element()
             assert(root is not None)
@@ -137,7 +154,7 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
                 self.image_list[index] = None
 
         if self.image_list[-1] is None:
-            image = raw_image
+            image = self.raw_image
         else:
             image = self.image_list[-1].image
 

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>554</width>
-    <height>326</height>
+    <width>546</width>
+    <height>344</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,6 +19,45 @@
      <widget class="QWidget" name="widget_1" native="true">
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
+        <widget class="QWidget" name="widget_1_1" native="true">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <layout class="QGridLayout" name="gridLayout">
+          <item row="0" column="0">
+           <widget class="QToolButton" name="toolButtonToggle">
+            <property name="text">
+             <string>Video/Camera</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QToolButton" name="toolButtonCapture">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="text">
+             <string>Capture</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="2">
+           <widget class="QToolButton" name="toolButtonRefresh">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="text">
+             <string>Refresh</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
         <widget class="QGraphicsView" name="graphicsView"/>
        </item>
       </layout>
@@ -28,7 +67,7 @@
      <widget class="QWidget" name="widget_2" native="true">
       <layout class="QVBoxLayout" name="verticalLayout">
        <item>
-        <widget class="QWidget" name="widget" native="true">
+        <widget class="QWidget" name="widget_2_1" native="true">
          <layout class="QHBoxLayout" name="horizontalLayout_3">
           <item>
            <widget class="QPushButton" name="pushButtonDelete">
@@ -69,8 +108,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>236</width>
-            <height>190</height>
+            <width>214</width>
+            <height>208</height>
            </rect>
           </property>
           <layout class="QFormLayout" name="formLayout">
@@ -99,7 +138,7 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>218</width>
+                <width>196</width>
                 <height>79</height>
                </rect>
               </property>
@@ -127,7 +166,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>554</width>
+     <width>546</width>
      <height>25</height>
     </rect>
    </property>
