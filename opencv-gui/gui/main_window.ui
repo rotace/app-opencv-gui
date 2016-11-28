@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>546</width>
-    <height>344</height>
+    <width>643</width>
+    <height>410</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,12 +20,6 @@
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
         <widget class="QWidget" name="widget_1_1" native="true">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
          <layout class="QGridLayout" name="gridLayout">
           <item row="0" column="0">
            <widget class="QToolButton" name="toolButtonToggle">
@@ -51,6 +45,13 @@
             </property>
             <property name="text">
              <string>Refresh</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="3">
+           <widget class="QComboBox" name="comboBoxSelectImages">
+            <property name="layoutDirection">
+             <enum>Qt::LeftToRight</enum>
             </property>
            </widget>
           </item>
@@ -108,8 +109,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>214</width>
-            <height>208</height>
+            <width>227</width>
+            <height>274</height>
            </rect>
           </property>
           <layout class="QFormLayout" name="formLayout">
@@ -138,7 +139,7 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>196</width>
+                <width>209</width>
                 <height>79</height>
                </rect>
               </property>
@@ -166,7 +167,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>546</width>
+     <width>643</width>
      <height>25</height>
     </rect>
    </property>

@@ -101,8 +101,8 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
         self.add_form(forms.drawContoursForm(), nm.Module.DrawCnt.value)
 
     def add_form(self, form, string):
-        success, raw_image = self.capture.read()
-        obj_img = ip.ImageObj(raw_image, ip.Color.BGR)
+        success, self.raw_image = self.capture.read()
+        obj_img = ip.ImageObj(self.raw_image, ip.Color.BGR)
         index = self.toolBox.currentIndex()+1
         self.form_list.insert(index, form)
         self.image_list.insert(index, obj_img)
@@ -135,6 +135,9 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
         for form in self.form_list:
             image_label_list.append(form.get_name())
             form.set_image_label_list(image_label_list)
+        self.comboBoxSelectImages.clear()
+        self.comboBoxSelectImages.addItems(image_label_list)
+        self.comboBoxSelectImages.setCurrentIndex(len(image_label_list)-1)
 
     def update_image(self):
         success, self.raw_image = self.capture.read()
@@ -156,7 +159,8 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
         if self.image_list[-1] is None:
             image = self.raw_image
         else:
-            image = self.image_list[-1].image
+            index = self.comboBoxSelectImages.currentIndex()
+            image = self.image_list[index].image
 
         assert(2 <= len(image.shape) or len(image.shape) <= 3)
         if len(image.shape) == 2:  # gray scale
