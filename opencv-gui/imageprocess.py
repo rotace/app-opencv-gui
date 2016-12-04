@@ -30,7 +30,7 @@ class CvtColor():
 
     code_names = ['BGR', 'RGB', 'HSV', 'HLS', 'GRAY']
     Codes = enum.IntEnum('Color', code_names)
-    cvt_codes = \
+    cv2_cvt_codes = \
         [[None, cv2.COLOR_BGR2RGB, cv2.COLOR_BGR2HSV,
          cv2.COLOR_BGR2HLS, cv2.COLOR_BGR2GRAY],
          [cv2.COLOR_RGB2BGR, None, cv2.COLOR_RGB2HSV,
@@ -42,7 +42,7 @@ class CvtColor():
     @classmethod
     def get_image(cls, root, obj, _):
         code = cls.Codes[str(root.find('code').text)]
-        cv2_cvt_code = cls.cvt_codes[obj.code-1][code-1]
+        cv2_cvt_code = cls.cv2_cvt_codes[obj.code-1][code-1]
         if cv2_cvt_code is None:
             return ImageObj(obj.image, obj.code, obj.contours)
         else:
@@ -56,8 +56,9 @@ class Thresh():
     thresh_type_names = \
         ['BINARY', 'BINARY_INV', 'TRUNC', 'TOZERO', 'TOZERO_INV']
     ThreshTypes = enum.IntEnum('Thresh', thresh_type_names)
-    thresh_types = [cv2.THRESH_BINARY, cv2.THRESH_BINARY_INV, cv2.THRESH_TRUNC,
-                    cv2.THRESH_TOZERO, cv2.THRESH_TOZERO_INV]
+    cv2_thresh_types = \
+        [cv2.THRESH_BINARY, cv2.THRESH_BINARY_INV, cv2.THRESH_TRUNC,
+         cv2.THRESH_TOZERO, cv2.THRESH_TOZERO_INV]
 
     @classmethod
     def get_image(cls, root, obj, _):
@@ -65,7 +66,7 @@ class Thresh():
         max_val = int(root.find('maxVal').text)
         thresh_type_str = str(root.find('threshType').text)
         thresh_type = cls.ThreshTypes[thresh_type_str]
-        cv2_thresh_type = cls.thresh_types[thresh_type-1]
+        cv2_thresh_type = cls.cv2_thresh_types[thresh_type-1]
         _, image = cv2.threshold(obj.image, thresh, max_val, cv2_thresh_type)
         return ImageObj(image, obj.code, obj.contours)
 
@@ -74,20 +75,21 @@ class FindCnt():
     name = 'findContours'
     mode_names = ['LIST', 'EXTERNAL', 'CCOMP', 'TREE']
     Modes = enum.IntEnum('ContourMode', mode_names)
-    modes = [cv2.RETR_LIST, cv2.RETR_EXTERNAL,
-             cv2.RETR_CCOMP, cv2.RETR_TREE]
+    cv2_modes = \
+        [cv2.RETR_LIST, cv2.RETR_EXTERNAL, cv2.RETR_CCOMP, cv2.RETR_TREE]
 
     method_names = ['NONE', 'SIMPLE', 'TC89_L1', 'TC89_KCOS']
     Methods = enum.IntEnum('ContourMethod', method_names)
-    methods = [cv2.CHAIN_APPROX_NONE, cv2.CHAIN_APPROX_SIMPLE,
-               cv2.CHAIN_APPROX_TC89_L1, cv2.CHAIN_APPROX_TC89_KCOS]
+    cv2_methods = \
+        [cv2.CHAIN_APPROX_NONE, cv2.CHAIN_APPROX_SIMPLE,
+         cv2.CHAIN_APPROX_TC89_L1, cv2.CHAIN_APPROX_TC89_KCOS]
 
     @classmethod
     def get_image(cls, root, obj, _):
         mode = cls.Modes[str(root.find('mode').text)]
         method = cls.Methods[str(root.find('method').text)]
-        cv2_mode = cls.modes[mode-1]
-        cv2_method = cls.methods[method-1]
+        cv2_mode = cls.cv2_modes[mode-1]
+        cv2_method = cls.cv2_methods[method-1]
         if len(obj.image.shape) is not 2:
             raise error.ModuleError('input image should be one color only!')
         image = obj.image.copy()
