@@ -18,16 +18,18 @@ class Canny():
     name = 'Canny'
 
     @staticmethod
-    def get_image(obj, minval, maxval):
-        image = cv2.Canny(obj.image, minval, maxval)
-        return ImageObj(image, CvtColor.CvtCodes.GRAY, obj.contours)
+    def get_image(root, obj, _):
+        min_val = int(root.find('min').text)
+        max_val = int(root.find('max').text)
+        image = cv2.Canny(obj.image, min_val, max_val)
+        return ImageObj(image, CvtColor.Codes.GRAY, obj.contours)
 
 
 class CvtColor():
     name = 'cvtColor'
 
-    cvt_code_names = ['BGR', 'RGB', 'HSV', 'HLS', 'GRAY']
-    CvtCodes = enum.IntEnum('Color', cvt_code_names)
+    code_names = ['BGR', 'RGB', 'HSV', 'HLS', 'GRAY']
+    Codes = enum.IntEnum('Color', code_names)
     cvt_codes = \
         [[None, cv2.COLOR_BGR2RGB, cv2.COLOR_BGR2HSV,
          cv2.COLOR_BGR2HLS, cv2.COLOR_BGR2GRAY],
@@ -38,12 +40,13 @@ class CvtColor():
          [cv2.COLOR_GRAY2BGR, cv2.COLOR_GRAY2RGB, None, None, None]]
 
     @classmethod
-    def get_image(cls, obj, code):
-        cvt_code = cls.cvt_codes[obj.code-1][code-1]
-        if cvt_code is None:
+    def get_image(cls, root, obj, _):
+        code = cls.Codes[str(root.find('code').text)]
+        cv2_cvt_code = cls.cvt_codes[obj.code-1][code-1]
+        if cv2_cvt_code is None:
             return ImageObj(obj.image, obj.code, obj.contours)
         else:
-            image = cv2.cvtColor(obj.image, cvt_code)
+            image = cv2.cvtColor(obj.image, cv2_cvt_code)
             return ImageObj(image, code, obj.contours)
 
 
@@ -57,10 +60,14 @@ class Thresh():
                     cv2.THRESH_TOZERO, cv2.THRESH_TOZERO_INV]
 
     @classmethod
-    def get_image(cls, img_obj, thresh, max_val, thresh_type):
-        _, image = cv2.threshold(img_obj.image, thresh, max_val,
-                                 cls.thresh_types[thresh_type-1])
-        return ImageObj(image, img_obj.code, img_obj.contours)
+    def get_image(cls, root, obj, _):
+        thresh = int(root.find('thresh').text)
+        max_val = int(root.find('maxVal').text)
+        thresh_type_str = str(root.find('threshType').text)
+        thresh_type = cls.ThreshTypes[thresh_type_str]
+        cv2_thresh_type = cls.thresh_types[thresh_type-1]
+        _, image = cv2.threshold(obj.image, thresh, max_val, cv2_thresh_type)
+        return ImageObj(image, obj.code, obj.contours)
 
 
 class FindCnt():
@@ -76,14 +83,15 @@ class FindCnt():
                cv2.CHAIN_APPROX_TC89_L1, cv2.CHAIN_APPROX_TC89_KCOS]
 
     @classmethod
-    def get_image(cls, obj, cnt_mode, cnt_method):
+    def get_image(cls, root, obj, _):
+        mode = cls.Modes[str(root.find('mode').text)]
+        method = cls.Methods[str(root.find('method').text)]
+        cv2_mode = cls.modes[mode-1]
+        cv2_method = cls.methods[method-1]
         if len(obj.image.shape) is not 2:
             raise error.ModuleError('input image should be one color only!')
         image = obj.image.copy()
-        contours, hierarchy = \
-            cv2.findContours(image,
-                             cls.modes[cnt_mode-1],
-                             cls.methods[cnt_method-1])
+        contours, hierarchy = cv2.findContours(image, cv2_mode, cv2_method)
         return ImageObj(image, obj.code, contours)
 
 
@@ -91,8 +99,10 @@ class DrawCnt():
     name = 'drawContours'
 
     @staticmethod
-    def get_image(obj_img, obj_cnt,
-                  cnt_index=-1, color=(0, 255, 0), thickness=3):
+    def get_image(root, obj_img, obj_cnt):
+        cnt_index = -1
+        color = (0, 255, 0)
+        thickness = 3
         image = obj_img.image.copy()
         cv2.drawContours(image, obj_cnt.contours,
                          cnt_index, color, thickness)
@@ -113,12 +123,13 @@ class kNNnumber():
         self.knn = cv2.KNearest()
         self.knn.train(train, train_labels)
 
-    def get_image(self, obj, k):
+    def get_image(self, root, obj, _):
+        k = int(root.find('K').text)
         if len(obj.image.shape) is not 2:
                 raise error.ModuleError('input image must be one color only!')
         test_gray = cv2.resize(obj.image, (20, 20))
         test = test_gray.reshape(-1, 400).astype(np.float32)
-        ret, result, neighbours, dist = self.knn.find_nearest(test, k=5)
+        ret, result, neighbours, dist = self.knn.find_nearest(test, k)
         image = obj.image.copy()
         cv2.rectangle(image, (0, 0), (100, 100), (0, 0, 0), -1)
         cv2.putText(image, str(int(result[0][0])), (0, 100),

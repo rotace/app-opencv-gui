@@ -61,7 +61,44 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
         self.filename = filename_list[0]
         self.dirname = os.path.dirname(self.filename)
         root_top = ElementTree.parse(self.filename)
-        print ElementTree.tostring(root_top)
+        del self.form_list[:]
+        del self.module_list[:]
+        del self.image_list[:]
+        while self.toolBox.count() != 0:
+            self.toolBox.removeItem(0)
+
+        root_module_list = []
+        for root_module in root_top.findall('module'):
+            root_module_list.append(root_module)
+            module_str = root_module.get('name')
+            if module_str == 'input':
+                form, module = self.add_input()
+
+            elif module_str == ip.Canny.name:
+                form, module = self.add_canny()
+
+            elif module_str == ip.CvtColor.name:
+                form, module = self.add_cvt_color()
+
+            elif module_str == ip.Thresh.name:
+                form, module = self.add_threshold()
+
+            elif module_str == ip.FindCnt.name:
+                form, module = self.add_find_contours()
+
+            elif module_str == ip.DrawCnt.name:
+                form, module = self.add_draw_contours()
+
+            elif module_str == ip.kNNnumber.name:
+                form, module = self.add_knn_number()
+
+            else:
+                print module_str
+                assert(False)
+                return None
+
+        for form, root_module in zip(self.form_list, root_module_list):
+            form.set_xml_element(root_module)
 
     def save(self):
         if self.filename is None:
@@ -94,39 +131,53 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
             self.timer.start()
 
     def add_input(self):
-        self.insert_items(forms.inputForm(),
-                          None,
-                          'input')
+        form = forms.inputForm()
+        module = ip.CvtColor
+        name = 'input'
+        self.insert_items(form, module, name)
+        return (form, module)
 
     def add_canny(self):
-        self.insert_items(forms.CannyForm(),
-                          None,
-                          ip.Canny.name)
+        form = forms.CannyForm()
+        module = ip.Canny
+        name = module.name
+        self.insert_items(form, module, name)
+        return (form, module)
 
     def add_cvt_color(self):
-        self.insert_items(forms.cvtColorForm(),
-                          None,
-                          ip.CvtColor.name)
+        form = forms.cvtColorForm()
+        module = ip.CvtColor
+        name = module.name
+        self.insert_items(form, module, name)
+        return (form, module)
 
     def add_threshold(self):
-        self.insert_items(forms.thresholdForm(),
-                          ip.Thresh(),
-                          ip.Thresh.name)
+        form = forms.thresholdForm()
+        module = ip.Thresh
+        name = module.name
+        self.insert_items(form, module, name)
+        return (form, module)
 
     def add_find_contours(self):
-        self.insert_items(forms.findContoursForm(),
-                          None,
-                          ip.FindCnt.name)
+        form = forms.findContoursForm()
+        module = ip.FindCnt
+        name = module.name
+        self.insert_items(form, module, name)
+        return (form, module)
 
     def add_draw_contours(self):
-        self.insert_items(forms.drawContoursForm(),
-                          None,
-                          ip.DrawCnt.name)
+        form = forms.drawContoursForm()
+        module = ip.DrawCnt
+        name = module.name
+        self.insert_items(form, module, name)
+        return (form, module)
 
     def add_knn_number(self):
-        self.insert_items(forms.kNNnumberForm(),
-                          ip.kNNnumber(),
-                          ip.kNNnumber.name)
+        form = forms.kNNnumberForm()
+        module = ip.kNNnumber()
+        name = module.name
+        self.insert_items(form, module, name)
+        return (form, module)
 
     def insert_items(self, form, module, string):
         index = self.toolBox.currentIndex()+1
@@ -160,11 +211,10 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
     def capture_image(self):
         success, self.raw_image = self.capture.read()
         assert(success)
-        return ip.ImageObj(self.raw_image, ip.CvtColor.CvtCodes.BGR)
+        return ip.ImageObj(self.raw_image, ip.CvtColor.Codes.BGR)
 
     def update_image(self):
-        self.image_list[0] = ip.CvtColor.get_image(self.capture_image(),
-                                                   ip.CvtColor.CvtCodes.RGB)
+        self.image_list[0] = self.capture_image()
         self.refresh_image()
 
     def refresh_image(self):
@@ -199,55 +249,15 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
         self.pixitem.setPixmap(self.pixmap)
 
     def excute_image_processing(self, root, module):
-        module_str = root.get('name')
         img_index = int(root.find('common').find('picture_number').text)
         cnt_index = int(root.find('common').find('contour_number').text)
         obj_img = self.image_list[img_index]
         obj_cnt = self.image_list[cnt_index]
 
-        if obj_img is None or obj_cnt is None:
+        if obj_img is None or obj_cnt is None or module is None:
             raise error.ModuleError('input image or contours is None!')
 
-        if module_str == 'input':
-            return self.image_list[0]
-
-        elif module_str == ip.Canny.name:
-            min_val = int(root.find('min').text)
-            max_val = int(root.find('max').text)
-            return ip.Canny.get_image(obj_img, min_val, max_val)
-
-        elif module_str == ip.CvtColor.name:
-            module = ip.CvtColor
-            code = str(root.find('code').text)
-            return module.get_image(obj_img, module.CvtCodes[code])
-
-        elif module_str == ip.Thresh.name:
-            module = ip.Thresh
-            thresh = int(root.find('thresh').text)
-            max_val = int(root.find('maxVal').text)
-            thresh_type = str(root.find('thresholdType').text)
-            return module.get_image(obj_img, thresh,
-                                    max_val, module.ThreshTypes[thresh_type])
-
-        elif module_str == ip.FindCnt.name:
-            module = ip.FindCnt
-            mode = str(root.find('mode').text)
-            method = str(root.find('method').text)
-            return module.get_image(obj_img,
-                                    module.Modes[mode],
-                                    module.Methods[method])
-
-        elif module_str == ip.DrawCnt.name:
-            module = ip.DrawCnt
-            return module.get_image(obj_img, obj_cnt)
-
-        elif module_str == ip.kNNnumber.name:
-            k = int(root.find('K').text)
-            return module.get_image(obj_img, k)
-
-        else:
-            assert(False)
-            return None
+        return module.get_image(root, obj_img, obj_cnt)
 
 
 def main():

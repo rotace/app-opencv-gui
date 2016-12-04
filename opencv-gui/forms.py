@@ -33,6 +33,12 @@ class commonForm(QtWidgets.QWidget, common_ui.Ui_Form):
         elem2.text = str(self.comboBox2.currentIndex())
         return root
 
+    def set_xml_element(self, root):
+        box1_index = int(root.find('picture_number').text)
+        box2_index = int(root.find('contour_number').text)
+        self.comboBox1.setCurrentIndex(box1_index)
+        self.comboBox2.setCurrentIndex(box2_index)
+
 
 class AbstractForm(QtWidgets.QWidget):
     def __init__(self):
@@ -46,6 +52,9 @@ class AbstractForm(QtWidgets.QWidget):
 class inputForm(AbstractForm, input_ui.Ui_Form):
     def __init__(self):
         super(inputForm, self).__init__()
+        for i in ip.CvtColor.Codes:
+            self.comboBox.addItem(i.name)
+        self.comboBox.setCurrentIndex(ip.CvtColor.Codes['RGB']-1)
 
     def get_name(self):
         return 'input'
@@ -61,7 +70,13 @@ class inputForm(AbstractForm, input_ui.Ui_Form):
         elem1.text = str(0)
         elem2 = ElementTree.SubElement(root_cmn, 'contour_number')
         elem2.text = str(0)
+        elem3 = ElementTree.SubElement(root, 'code')
+        elem3.text = str(self.comboBox.currentText())
         return root
+
+    def set_xml_element(self, root):
+        code = ip.CvtColor.Codes[str(root.find('code').text)]
+        self.comboBox.setCurrentIndex(code-1)
 
 
 class CannyForm(AbstractForm, canny_ui.Ui_Form):
@@ -86,13 +101,20 @@ class CannyForm(AbstractForm, canny_ui.Ui_Form):
         elem2.text = str(self.spinBoxMax.value())
         return root
 
+    def set_xml_element(self, root):
+        self.commonForm.set_xml_element(root.find('common'))
+        min_val = int(root.find('min').text)
+        max_val = int(root.find('max').text)
+        self.spinBoxMin.setValue(min_val)
+        self.spinBoxMax.setValue(max_val)
+
 
 class cvtColorForm(AbstractForm, cvt_color_ui.Ui_Form):
     def __init__(self):
         super(cvtColorForm, self).__init__()
         self.commonForm = commonForm()
         self.widget_1.layout().addWidget(self.commonForm)
-        for i in ip.CvtColor.CvtCodes:
+        for i in ip.CvtColor.Codes:
             self.comboBox.addItem(i.name)
 
     def get_name(self):
@@ -108,6 +130,11 @@ class cvtColorForm(AbstractForm, cvt_color_ui.Ui_Form):
         elem1 = ElementTree.SubElement(root, 'code')
         elem1.text = str(self.comboBox.currentText())
         return root
+
+    def set_xml_element(self, root):
+        self.commonForm.set_xml_element(root.find('common'))
+        code = ip.CvtColor.Codes[str(root.find('code').text)]
+        self.comboBox.setCurrentIndex(code-1)
 
 
 class thresholdForm(AbstractForm, threshold_ui.Ui_Form):
@@ -132,9 +159,18 @@ class thresholdForm(AbstractForm, threshold_ui.Ui_Form):
         elem1.text = str(self.spinBoxThresh.value())
         elem2 = ElementTree.SubElement(root, 'maxVal')
         elem2.text = str(self.spinBoxMaxVal.value())
-        elem3 = ElementTree.SubElement(root, 'thresholdType')
+        elem3 = ElementTree.SubElement(root, 'threshType')
         elem3.text = str(self.comboBox.currentText())
         return root
+
+    def set_xml_element(self, root):
+        self.commonForm.set_xml_element(root.find('common'))
+        thresh = int(root.find('thresh').text)
+        maxval = int(root.find('maxVal').text)
+        thresh_type = ip.Thresh.ThreshTypes[str(root.find('threshType').text)]
+        self.spinBoxThresh.setValue(thresh)
+        self.spinBoxMaxVal.setValue(maxval)
+        self.comboBox.setCurrentIndex(thresh_type-1)
 
 
 class findContoursForm(AbstractForm, find_contours_ui.Ui_Form):
@@ -163,6 +199,13 @@ class findContoursForm(AbstractForm, find_contours_ui.Ui_Form):
         elem2.text = str(self.comboBoxMethod.currentText())
         return root
 
+    def set_xml_element(self, root):
+        self.commonForm.set_xml_element(root.find('common'))
+        mode = ip.FindCnt.Modes[str(root.find('mode').text)]
+        method = ip.FindCnt.Methods[str(root.find('method').text)]
+        self.comboBoxMode.setCurrentIndex(mode-1)
+        self.comboBoxMethod.setCurrentIndex(method-1)
+
 
 class drawContoursForm(AbstractForm, draw_contours_ui.Ui_Form):
     def __init__(self):
@@ -181,6 +224,9 @@ class drawContoursForm(AbstractForm, draw_contours_ui.Ui_Form):
         root.set('name', ip.DrawCnt.name)
         root.append(self.commonForm.get_xml_element())
         return root
+
+    def set_xml_element(self, root):
+        self.commonForm.set_xml_element(root.find('common'))
 
 
 class kNNnumberForm(AbstractForm, knn_number_ui.Ui_Form):
@@ -202,3 +248,8 @@ class kNNnumberForm(AbstractForm, knn_number_ui.Ui_Form):
         elem1 = ElementTree.SubElement(root, 'K')
         elem1.text = str(self.spinBoxK.value())
         return root
+
+    def set_xml_element(self, root):
+        self.commonForm.set_xml_element(root.find('common'))
+        k = int(root.find('K').text)
+        self.spinBoxK.setValue(k)
