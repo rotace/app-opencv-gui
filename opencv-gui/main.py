@@ -8,7 +8,6 @@ import cv2
 from gui import main_window
 import forms
 import error
-import names as nm
 import imageprocess as ip
 
 assert(cv2.__version__ == '2.4.11')
@@ -22,17 +21,18 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
         self.actionSave.triggered.connect(self.save)
         self.actionSave_As.triggered.connect(self.save_as)
         self.actionClose.triggered.connect(QtWidgets.qApp.quit)
-        self.actionCanny.triggered.connect(self.add_form_canny)
-        self.actionCvtColor.triggered.connect(self.add_form_cvt_color)
-        self.actionThreshold.triggered.connect(self.add_form_threshold)
-        self.actionFindContours.triggered.connect(self.add_form_find_contours)
-        self.actionDrawContours.triggered.connect(self.add_form_draw_contours)
+        self.actionCanny.triggered.connect(self.add_canny)
+        self.actionCvtColor.triggered.connect(self.add_cvt_color)
+        self.actionThreshold.triggered.connect(self.add_threshold)
+        self.actionFindContours.triggered.connect(self.add_find_contours)
+        self.actionDrawContours.triggered.connect(self.add_draw_contours)
+        self.actionKNNnumber.triggered.connect(self.add_knn_number)
 
         self.toolButtonToggle.setCheckable(True)
         self.toolButtonToggle.toggled.connect(self.toggle_video)
         self.toolButtonCapture.clicked.connect(self.update_image)
         self.toolButtonRefresh.clicked.connect(self.refresh_image)
-        self.pushButtonDelete.clicked.connect(lambda: self.del_form())
+        self.pushButtonDelete.clicked.connect(lambda: self.del_items())
         self.show()
 
         self.capture = cv2.VideoCapture(0)
@@ -46,9 +46,10 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
         # self.filename = None
         # self.dirname = '/home'
         self.form_list = []
+        self.module_list = []
         self.image_list = []
         self.toolBox.removeItem(0)
-        self.add_form_input()
+        self.add_input()
 
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update_image)
@@ -82,34 +83,6 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
         self.dirname = os.path.dirname(self.filename)
         self.save()
 
-    def add_form_input(self):
-        self.add_form(forms.inputForm(), nm.Module.Input.value)
-
-    def add_form_canny(self):
-        self.add_form(forms.CannyForm(), nm.Module.Canny.value)
-
-    def add_form_cvt_color(self):
-        self.add_form(forms.cvtColorForm(), nm.Module.CvtColor.value)
-
-    def add_form_threshold(self):
-        self.add_form(forms.thresholdForm(), nm.Module.Thresh.value)
-
-    def add_form_find_contours(self):
-        self.add_form(forms.findContoursForm(), nm.Module.FindCnt.value)
-
-    def add_form_draw_contours(self):
-        self.add_form(forms.drawContoursForm(), nm.Module.DrawCnt.value)
-
-    def add_form(self, form, string):
-        success, self.raw_image = self.capture.read()
-        obj_img = ip.ImageObj(self.raw_image, ip.Color.BGR)
-        index = self.toolBox.currentIndex()+1
-        self.form_list.insert(index, form)
-        self.image_list.insert(index, obj_img)
-        self.toolBox.insertItem(index, form, string)
-        self.toolBox.setCurrentIndex(index)
-        self.update_form()
-
     def toggle_video(self, checked):
         if checked:
             self.toolButtonCapture.setEnabled(True)
@@ -120,14 +93,59 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
             self.toolButtonRefresh.setEnabled(False)
             self.timer.start()
 
-    def del_form(self):
+    def add_input(self):
+        self.insert_items(forms.inputForm(),
+                          None,
+                          'input')
+
+    def add_canny(self):
+        self.insert_items(forms.CannyForm(),
+                          None,
+                          ip.Canny.name)
+
+    def add_cvt_color(self):
+        self.insert_items(forms.cvtColorForm(),
+                          None,
+                          ip.CvtColor.name)
+
+    def add_threshold(self):
+        self.insert_items(forms.thresholdForm(),
+                          ip.Thresh(),
+                          ip.Thresh.name)
+
+    def add_find_contours(self):
+        self.insert_items(forms.findContoursForm(),
+                          None,
+                          ip.FindCnt.name)
+
+    def add_draw_contours(self):
+        self.insert_items(forms.drawContoursForm(),
+                          None,
+                          ip.DrawCnt.name)
+
+    def add_knn_number(self):
+        self.insert_items(forms.kNNnumberForm(),
+                          ip.kNNnumber(),
+                          ip.kNNnumber.name)
+
+    def insert_items(self, form, module, string):
+        index = self.toolBox.currentIndex()+1
+        self.image_list.insert(index, self.capture_image())
+        self.module_list.insert(index, module)
+        self.form_list.insert(index, form)
+        self.toolBox.insertItem(index, form, string)
+        self.toolBox.setCurrentIndex(index)
+        self.update_form()
+
+    def del_items(self):
         index = self.toolBox.currentIndex()
         if index == -1 or index == 0:
             pass
         else:
             self.toolBox.removeItem(index)
-            del self.form_list[index]
             del self.image_list[index]
+            del self.module_list[index]
+            del self.form_list[index]
             self.update_form()
 
     def update_form(self):
@@ -139,19 +157,24 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
         self.comboBoxSelectImages.addItems(image_label_list)
         self.comboBoxSelectImages.setCurrentIndex(len(image_label_list)-1)
 
-    def update_image(self):
+    def capture_image(self):
         success, self.raw_image = self.capture.read()
         assert(success)
-        obj_img = ip.ImageObj(self.raw_image, ip.Color.BGR)
-        self.image_list[0] = ip.cvt_color(obj_img, ip.Color.RGB)
+        return ip.ImageObj(self.raw_image, ip.CvtColor.CvtCodes.BGR)
+
+    def update_image(self):
+        self.image_list[0] = ip.CvtColor.get_image(self.capture_image(),
+                                                   ip.CvtColor.CvtCodes.RGB)
         self.refresh_image()
 
     def refresh_image(self):
         for (index, form) in enumerate(self.form_list):
+            module = self.module_list[index]
             root = form.get_xml_element()
             assert(root is not None)
             try:
-                self.image_list[index] = self.excute_image_processing(root)
+                self.image_list[index] = \
+                    self.excute_image_processing(root, module)
             except error.ModuleError as e:
                 print e, datetime.now()
                 self.image_list[index] = None
@@ -175,7 +198,7 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
         self.pixmap = QtGui.QPixmap.fromImage(self.qimage)
         self.pixitem.setPixmap(self.pixmap)
 
-    def excute_image_processing(self, root):
+    def excute_image_processing(self, root, module):
         module_str = root.get('name')
         img_index = int(root.find('common').find('picture_number').text)
         cnt_index = int(root.find('common').find('contour_number').text)
@@ -185,29 +208,43 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
         if obj_img is None or obj_cnt is None:
             raise error.ModuleError('input image or contours is None!')
 
-        if module_str == nm.Module.Input.name:
+        if module_str == 'input':
             return self.image_list[0]
-        elif module_str == nm.Module.Canny.name:
+
+        elif module_str == ip.Canny.name:
             min_val = int(root.find('min').text)
             max_val = int(root.find('max').text)
-            return ip.canny(obj_img, min_val, max_val)
-        elif module_str == nm.Module.CvtColor.name:
+            return ip.Canny.get_image(obj_img, min_val, max_val)
+
+        elif module_str == ip.CvtColor.name:
+            module = ip.CvtColor
             code = str(root.find('code').text)
-            return ip.cvt_color(obj_img, ip.Color[code])
-        elif module_str == nm.Module.Thresh.name:
+            return module.get_image(obj_img, module.CvtCodes[code])
+
+        elif module_str == ip.Thresh.name:
+            module = ip.Thresh
             thresh = int(root.find('thresh').text)
             max_val = int(root.find('maxVal').text)
             thresh_type = str(root.find('thresholdType').text)
-            return ip.threshold(obj_img, thresh,
-                                max_val, ip.Thresh[thresh_type])
-        elif module_str == nm.Module.FindCnt.name:
+            return module.get_image(obj_img, thresh,
+                                    max_val, module.ThreshTypes[thresh_type])
+
+        elif module_str == ip.FindCnt.name:
+            module = ip.FindCnt
             mode = str(root.find('mode').text)
             method = str(root.find('method').text)
-            return ip.find_contours(obj_img,
-                                    ip.ContourMode[mode],
-                                    ip.ContourMethod[method])
-        elif module_str == nm.Module.DrawCnt.name:
-            return ip.draw_contours(obj_img, obj_cnt)
+            return module.get_image(obj_img,
+                                    module.Modes[mode],
+                                    module.Methods[method])
+
+        elif module_str == ip.DrawCnt.name:
+            module = ip.DrawCnt
+            return module.get_image(obj_img, obj_cnt)
+
+        elif module_str == ip.kNNnumber.name:
+            k = int(root.find('K').text)
+            return module.get_image(obj_img, k)
+
         else:
             assert(False)
             return None

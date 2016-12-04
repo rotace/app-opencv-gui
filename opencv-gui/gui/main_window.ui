@@ -189,6 +189,7 @@
     <addaction name="actionThreshold"/>
     <addaction name="actionFindContours"/>
     <addaction name="actionDrawContours"/>
+    <addaction name="actionKNNnumber"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menuFilter"/>
@@ -237,6 +238,11 @@
   <action name="actionDrawContours">
    <property name="text">
     <string>drawContours</string>
+   </property>
+  </action>
+  <action name="actionKNNnumber">
+   <property name="text">
+    <string>kNNnumber</string>
    </property>
   </action>
  </widget>

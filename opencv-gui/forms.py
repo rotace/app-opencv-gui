@@ -2,7 +2,6 @@ from PyQt5 import QtWidgets
 from xml.etree import ElementTree
 
 import imageprocess as ip
-import names as nm
 from gui import common_ui
 from gui import input_ui
 from gui import canny_ui
@@ -10,6 +9,7 @@ from gui import cvt_color_ui
 from gui import threshold_ui
 from gui import find_contours_ui
 from gui import draw_contours_ui
+from gui import knn_number_ui
 
 
 class commonForm(QtWidgets.QWidget, common_ui.Ui_Form):
@@ -48,14 +48,14 @@ class inputForm(AbstractForm, input_ui.Ui_Form):
         super(inputForm, self).__init__()
 
     def get_name(self):
-        return nm.Module.Input.value
+        return 'input'
 
     def set_image_label_list(self, image_label_list):
         pass
 
     def get_xml_element(self):
         root = ElementTree.Element('module')
-        root.set('name', nm.Module.Input.name)
+        root.set('name', 'input')
         root_cmn = ElementTree.SubElement(root, 'common')
         elem1 = ElementTree.SubElement(root_cmn, 'picture_number')
         elem1.text = str(0)
@@ -71,14 +71,14 @@ class CannyForm(AbstractForm, canny_ui.Ui_Form):
         self.widget_1.layout().addWidget(self.commonForm)
 
     def get_name(self):
-        return nm.Module.Canny.value
+        return ip.Canny.name
 
     def set_image_label_list(self, image_label_list):
         self.commonForm.set_image_label_list(image_label_list)
 
     def get_xml_element(self):
         root = ElementTree.Element('module')
-        root.set('name', nm.Module.Canny.name)
+        root.set('name', ip.Canny.name)
         root.append(self.commonForm.get_xml_element())
         elem1 = ElementTree.SubElement(root, 'min')
         elem1.text = str(self.spinBoxMin.value())
@@ -92,18 +92,18 @@ class cvtColorForm(AbstractForm, cvt_color_ui.Ui_Form):
         super(cvtColorForm, self).__init__()
         self.commonForm = commonForm()
         self.widget_1.layout().addWidget(self.commonForm)
-        for i in ip.Color:
+        for i in ip.CvtColor.CvtCodes:
             self.comboBox.addItem(i.name)
 
     def get_name(self):
-        return nm.Module.CvtColor.value
+        return ip.CvtColor.name
 
     def set_image_label_list(self, image_label_list):
         self.commonForm.set_image_label_list(image_label_list)
 
     def get_xml_element(self):
         root = ElementTree.Element('module')
-        root.set('name', nm.Module.CvtColor.name)
+        root.set('name', ip.CvtColor.name)
         root.append(self.commonForm.get_xml_element())
         elem1 = ElementTree.SubElement(root, 'code')
         elem1.text = str(self.comboBox.currentText())
@@ -115,18 +115,18 @@ class thresholdForm(AbstractForm, threshold_ui.Ui_Form):
         super(thresholdForm, self).__init__()
         self.commonForm = commonForm()
         self.widget_1.layout().addWidget(self.commonForm)
-        for i in ip.Thresh:
+        for i in ip.Thresh.ThreshTypes:
             self.comboBox.addItem(i.name)
 
     def get_name(self):
-        return nm.Module.Thresh.value
+        return ip.Thresh.name
 
     def set_image_label_list(self, image_label_list):
         self.commonForm.set_image_label_list(image_label_list)
 
     def get_xml_element(self):
         root = ElementTree.Element('module')
-        root.set('name', nm.Module.Thresh.name)
+        root.set('name', ip.Thresh.name)
         root.append(self.commonForm.get_xml_element())
         elem1 = ElementTree.SubElement(root, 'thresh')
         elem1.text = str(self.spinBoxThresh.value())
@@ -142,20 +142,20 @@ class findContoursForm(AbstractForm, find_contours_ui.Ui_Form):
         super(findContoursForm, self).__init__()
         self.commonForm = commonForm()
         self.widget_1.layout().addWidget(self.commonForm)
-        for i in ip.ContourMode:
+        for i in ip.FindCnt.Modes:
             self.comboBoxMode.addItem(i.name)
-        for i in ip.ContourMethod:
+        for i in ip.FindCnt.Methods:
             self.comboBoxMethod.addItem(i.name)
 
     def get_name(self):
-        return nm.Module.FindCnt.value
+        return ip.FindCnt.name
 
     def set_image_label_list(self, image_label_list):
         self.commonForm.set_image_label_list(image_label_list)
 
     def get_xml_element(self):
         root = ElementTree.Element('module')
-        root.set('name', nm.Module.FindCnt.name)
+        root.set('name', ip.FindCnt.name)
         root.append(self.commonForm.get_xml_element())
         elem1 = ElementTree.SubElement(root, 'mode')
         elem1.text = str(self.comboBoxMode.currentText())
@@ -171,13 +171,34 @@ class drawContoursForm(AbstractForm, draw_contours_ui.Ui_Form):
         self.widget_1.layout().addWidget(self.commonForm)
 
     def get_name(self):
-        return nm.Module.DrawCnt.value
+        return ip.DrawCnt.name
 
     def set_image_label_list(self, image_label_list):
         self.commonForm.set_image_label_list(image_label_list)
 
     def get_xml_element(self):
         root = ElementTree.Element('module')
-        root.set('name', nm.Module.DrawCnt.name)
+        root.set('name', ip.DrawCnt.name)
         root.append(self.commonForm.get_xml_element())
+        return root
+
+
+class kNNnumberForm(AbstractForm, knn_number_ui.Ui_Form):
+    def __init__(self):
+        super(kNNnumberForm, self).__init__()
+        self.commonForm = commonForm()
+        self.widget_1.layout().addWidget(self.commonForm)
+
+    def get_name(self):
+        return ip.kNNnumber.name
+
+    def set_image_label_list(self, image_label_list):
+        self.commonForm.set_image_label_list(image_label_list)
+
+    def get_xml_element(self):
+        root = ElementTree.Element('module')
+        root.set('name', ip.kNNnumber.name)
+        root.append(self.commonForm.get_xml_element())
+        elem1 = ElementTree.SubElement(root, 'K')
+        elem1.text = str(self.spinBoxK.value())
         return root

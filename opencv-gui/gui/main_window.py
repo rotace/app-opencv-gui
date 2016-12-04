@@ -128,6 +128,8 @@ class Ui_MainWindow(object):
         self.actionFindContours.setObjectName("actionFindContours")
         self.actionDrawContours = QtWidgets.QAction(MainWindow)
         self.actionDrawContours.setObjectName("actionDrawContours")
+        self.actionKNNnumber = QtWidgets.QAction(MainWindow)
+        self.actionKNNnumber.setObjectName("actionKNNnumber")
         self.menu_File.addAction(self.actionOpen)
         self.menu_File.addAction(self.actionSave)
         self.menu_File.addAction(self.actionSave_As)
@@ -137,6 +139,7 @@ class Ui_MainWindow(object):
         self.menuFilter.addAction(self.actionThreshold)
         self.menuFilter.addAction(self.actionFindContours)
         self.menuFilter.addAction(self.actionDrawContours)
+        self.menuFilter.addAction(self.actionKNNnumber)
         self.menubar.addAction(self.menu_File.menuAction())
         self.menubar.addAction(self.menuFilter.menuAction())
 
@@ -163,4 +166,5 @@ class Ui_MainWindow(object):
         self.actionThreshold.setText(_translate("MainWindow", "threshold"))
         self.actionFindContours.setText(_translate("MainWindow", "findContours"))
         self.actionDrawContours.setText(_translate("MainWindow", "drawContours"))
+        self.actionKNNnumber.setText(_translate("MainWindow", "kNNnumber"))
 
