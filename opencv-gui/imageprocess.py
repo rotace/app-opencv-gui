@@ -2,6 +2,8 @@ import cv2
 import enum
 import error
 import numpy as np
+import pyocr
+from PIL import Image
 
 
 class ImageObj():
@@ -73,6 +75,7 @@ class Thresh():
 
 class FindCnt():
     name = 'findContours'
+
     mode_names = ['LIST', 'EXTERNAL', 'CCOMP', 'TREE']
     Modes = enum.IntEnum('ContourMode', mode_names)
     cv2_modes = \
@@ -136,4 +139,51 @@ class kNNnumber():
         cv2.rectangle(image, (0, 0), (100, 100), (0, 0, 0), -1)
         cv2.putText(image, str(int(result[0][0])), (0, 100),
                     cv2.FONT_HERSHEY_PLAIN, 8, (255, 255, 255))
+        return ImageObj(image, obj.code, obj.contours)
+
+
+class Pyocr():
+    name = 'PyOCR'
+
+    psmodes_names = \
+        ['Orientation_and_script_detection_(OSD)_only.',
+         'Automatic_page_segmentation_with_OSD.',
+         'Automatic_page_segmentation_but_no_OSD_or_OCR.',
+         'Fully_automatic_page_segmentation_but_no_OSD._(Default)',
+         'Assume_a_single_column_of_text_of_variable_sizes.',
+         'Assume_a_single_uniform_block_of_vertically_aligned_text.',
+         'Assume_a_single_uniform_block_of_text.',
+         'Treat_the_image_as_a_single_text_line.',
+         'Treat_the_image_as_a_single_word.',
+         'Treat_the_image_as_a_single_word_in_a_circle.',
+         'Treat_the_image_as_a_single_character.']
+    PSModes = enum.IntEnum('PageSegmentationMode', psmodes_names)
+
+    def __init__(self):
+        self.tools = pyocr.get_available_tools()
+        if len(self.tools) == 0:
+                raise error.ModuleError('No OCR tool found')
+        self.tool_names = map(lambda n:n.get_name(), self.tools)
+        self.setTool(self.tool_names[0])
+
+    def setTool(self, tool_name):
+        for tool in self.tools:
+            if tool.get_name() == tool_name:
+                self.tool = tool
+                break
+        self.lang_names = self.tool.get_available_languages()
+
+    def get_image(self, root, obj, _):
+        lang = str(root.find('lang').text)
+        psmode = self.PSModes[str(root.find('psmode').text)]-1
+        image = obj.image.copy()
+        builder = pyocr.builders.WordBoxBuilder(tesseract_layout=psmode)
+        res = self.tool.image_to_string(Image.fromarray(image),
+                                        lang=lang,
+                                        builder=builder)
+        for d in res:
+            print d.content
+            cv2.rectangle(image, d.position[0], d.position[1], (0, 0, 255), 2)
+            cv2.putText(image, (d.content).encode('utf-8'), d.position[0],
+                        cv2.FONT_HERSHEY_PLAIN, 8, (0, 0, 0))
         return ImageObj(image, obj.code, obj.contours)

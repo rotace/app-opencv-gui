@@ -27,6 +27,7 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
         self.actionFindContours.triggered.connect(self.add_find_contours)
         self.actionDrawContours.triggered.connect(self.add_draw_contours)
         self.actionKNNnumber.triggered.connect(self.add_knn_number)
+        self.actionPyocr.triggered.connect(self.add_pyocr)
 
         self.toolButtonToggle.setCheckable(True)
         self.toolButtonToggle.toggled.connect(self.toggle_video)
@@ -175,6 +176,13 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
     def add_knn_number(self):
         form = forms.kNNnumberForm()
         module = ip.kNNnumber()
+        name = module.name
+        self.insert_items(form, module, name)
+        return (form, module)
+
+    def add_pyocr(self):
+        form = forms.pyocrForm()
+        module = form.set_module(ip.Pyocr())
         name = module.name
         self.insert_items(form, module, name)
         return (form, module)

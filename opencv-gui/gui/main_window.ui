@@ -190,6 +190,7 @@
     <addaction name="actionFindContours"/>
     <addaction name="actionDrawContours"/>
     <addaction name="actionKNNnumber"/>
+    <addaction name="actionPyocr"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menuFilter"/>
@@ -243,6 +244,11 @@
   <action name="actionKNNnumber">
    <property name="text">
     <string>kNNnumber</string>
+   </property>
+  </action>
+  <action name="actionPyocr">
+   <property name="text">
+    <string>pyocr</string>
    </property>
   </action>
  </widget>

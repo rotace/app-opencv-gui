@@ -10,6 +10,7 @@ from gui import threshold_ui
 from gui import find_contours_ui
 from gui import draw_contours_ui
 from gui import knn_number_ui
+from gui import pyocr_ui
 
 
 class commonForm(QtWidgets.QWidget, common_ui.Ui_Form):
@@ -64,7 +65,7 @@ class inputForm(AbstractForm, input_ui.Ui_Form):
 
     def get_xml_element(self):
         root = ElementTree.Element('module')
-        root.set('name', 'input')
+        root.set('name', self.get_name())
         root_cmn = ElementTree.SubElement(root, 'common')
         elem1 = ElementTree.SubElement(root_cmn, 'picture_number')
         elem1.text = str(0)
@@ -93,7 +94,7 @@ class CannyForm(AbstractForm, canny_ui.Ui_Form):
 
     def get_xml_element(self):
         root = ElementTree.Element('module')
-        root.set('name', ip.Canny.name)
+        root.set('name', self.get_name())
         root.append(self.commonForm.get_xml_element())
         elem1 = ElementTree.SubElement(root, 'min')
         elem1.text = str(self.spinBoxMin.value())
@@ -125,7 +126,7 @@ class cvtColorForm(AbstractForm, cvt_color_ui.Ui_Form):
 
     def get_xml_element(self):
         root = ElementTree.Element('module')
-        root.set('name', ip.CvtColor.name)
+        root.set('name', self.get_name())
         root.append(self.commonForm.get_xml_element())
         elem1 = ElementTree.SubElement(root, 'code')
         elem1.text = str(self.comboBox.currentText())
@@ -153,7 +154,7 @@ class thresholdForm(AbstractForm, threshold_ui.Ui_Form):
 
     def get_xml_element(self):
         root = ElementTree.Element('module')
-        root.set('name', ip.Thresh.name)
+        root.set('name', self.get_name())
         root.append(self.commonForm.get_xml_element())
         elem1 = ElementTree.SubElement(root, 'thresh')
         elem1.text = str(self.spinBoxThresh.value())
@@ -191,7 +192,7 @@ class findContoursForm(AbstractForm, find_contours_ui.Ui_Form):
 
     def get_xml_element(self):
         root = ElementTree.Element('module')
-        root.set('name', ip.FindCnt.name)
+        root.set('name', self.get_name())
         root.append(self.commonForm.get_xml_element())
         elem1 = ElementTree.SubElement(root, 'mode')
         elem1.text = str(self.comboBoxMode.currentText())
@@ -221,7 +222,7 @@ class drawContoursForm(AbstractForm, draw_contours_ui.Ui_Form):
 
     def get_xml_element(self):
         root = ElementTree.Element('module')
-        root.set('name', ip.DrawCnt.name)
+        root.set('name', self.get_name())
         root.append(self.commonForm.get_xml_element())
         return root
 
@@ -243,7 +244,7 @@ class kNNnumberForm(AbstractForm, knn_number_ui.Ui_Form):
 
     def get_xml_element(self):
         root = ElementTree.Element('module')
-        root.set('name', ip.kNNnumber.name)
+        root.set('name', self.get_name())
         root.append(self.commonForm.get_xml_element())
         elem1 = ElementTree.SubElement(root, 'K')
         elem1.text = str(self.spinBoxK.value())
@@ -253,3 +254,51 @@ class kNNnumberForm(AbstractForm, knn_number_ui.Ui_Form):
         self.commonForm.set_xml_element(root.find('common'))
         k = int(root.find('K').text)
         self.spinBoxK.setValue(k)
+
+
+class pyocrForm(AbstractForm, pyocr_ui.Ui_Form):
+    def __init__(self):
+        super(pyocrForm, self).__init__()
+        self.commonForm = commonForm()
+        self.widget_1.layout().addWidget(self.commonForm)
+        self.comboBoxTool.currentIndexChanged.connect(self.set_tool)
+        for i in ip.Pyocr.PSModes:
+            self.comboBoxPSMode.addItem(i.name)
+        self.comboBoxPSMode.setCurrentIndex(3)
+        self.module = None
+
+    def set_module(self, module):
+        self.module = module
+        for i in self.module.tool_names:
+            self.comboBoxTool.addItem(i)
+        return self.module
+
+    def set_tool(self):
+        self.module.setTool(self.comboBoxTool.currentText())
+        for i in self.module.lang_names:
+            self.comboBoxLang.addItem(i)
+
+    def get_name(self):
+        return ip.Pyocr.name
+
+    def set_image_label_list(self, image_label_list):
+        self.commonForm.set_image_label_list(image_label_list)
+
+    def get_xml_element(self):
+        root = ElementTree.Element('module')
+        root.set('name', self.get_name())
+        root.append(self.commonForm.get_xml_element())
+        elem1 = ElementTree.SubElement(root, 'tool')
+        elem1.text = str(self.comboBoxTool.currentText())
+        elem2 = ElementTree.SubElement(root, 'lang')
+        elem2.text = str(self.comboBoxLang.currentText())
+        elem3 = ElementTree.SubElement(root, 'psmode')
+        elem3.text = str(self.comboBoxPSMode.currentText())
+        return root
+
+    def set_xml_element(self, root):
+        self.commonForm.set_xml_element(root.find('common'))
+        self.comboBoxTool.setCurrentText(str(root.find('tool').text))
+        self.comboBoxLang.setCurrentText(str(root.find('lang').text))
+        psmode = ip.Pyocr.PSModes[str(root.find('psmode').text)]
+        self.comboBoxPSMode.setCurrentIndex(psmode-1)
