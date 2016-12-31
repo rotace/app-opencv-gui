@@ -1,5 +1,6 @@
 from PyQt5 import QtWidgets
 from xml.etree import ElementTree
+import distutils.util
 
 import imageprocess as ip
 from gui import common_ui
@@ -7,6 +8,7 @@ from gui import input_ui
 from gui import canny_ui
 from gui import cvt_color_ui
 from gui import threshold_ui
+from gui import adaptive_threshold_ui
 from gui import find_contours_ui
 from gui import draw_contours_ui
 from gui import knn_number_ui
@@ -144,7 +146,7 @@ class thresholdForm(AbstractForm, threshold_ui.Ui_Form):
         self.commonForm = commonForm()
         self.widget_1.layout().addWidget(self.commonForm)
         for i in ip.Thresh.ThreshTypes:
-            self.comboBox.addItem(i.name)
+            self.comboBoxThresholdType.addItem(i.name)
 
     def get_name(self):
         return ip.Thresh.name
@@ -156,22 +158,72 @@ class thresholdForm(AbstractForm, threshold_ui.Ui_Form):
         root = ElementTree.Element('module')
         root.set('name', self.get_name())
         root.append(self.commonForm.get_xml_element())
-        elem1 = ElementTree.SubElement(root, 'thresh')
-        elem1.text = str(self.spinBoxThresh.value())
-        elem2 = ElementTree.SubElement(root, 'maxVal')
-        elem2.text = str(self.spinBoxMaxVal.value())
-        elem3 = ElementTree.SubElement(root, 'threshType')
-        elem3.text = str(self.comboBox.currentText())
+        elem = ElementTree.SubElement(root, 'thresh')
+        elem.text = str(self.spinBoxThresh.value())
+        elem = ElementTree.SubElement(root, 'maxVal')
+        elem.text = str(self.spinBoxMaxVal.value())
+        elem = ElementTree.SubElement(root, 'threshType')
+        elem.text = str(self.comboBoxThresholdType.currentText())
+        elem = ElementTree.SubElement(root, 'otsu')
+        elem.text = str(self.checkBoxOtsu.isChecked())
         return root
 
     def set_xml_element(self, root):
         self.commonForm.set_xml_element(root.find('common'))
-        thresh = int(root.find('thresh').text)
-        maxval = int(root.find('maxVal').text)
-        thresh_type = ip.Thresh.ThreshTypes[str(root.find('threshType').text)]
-        self.spinBoxThresh.setValue(thresh)
-        self.spinBoxMaxVal.setValue(maxval)
-        self.comboBox.setCurrentIndex(thresh_type-1)
+        th = int(root.find('thresh').text)
+        mv = int(root.find('maxVal').text)
+        tt = ip.AdaptThresh.ThreshTypes[str(root.find('threshType').text)]
+        ot = distutils.util.strtobool(str(root.find('otsu').text))
+        self.spinBoxThresh.setValue(th)
+        self.spinBoxMaxValue.setValue(mv)
+        self.comboBoxThresholdType.setCurrentIndex(tt-1)
+        self.checkBoxOtsu.setChecked(ot)
+
+
+class adaptiveThresholdForm(AbstractForm, adaptive_threshold_ui.Ui_Form):
+    def __init__(self):
+        super(adaptiveThresholdForm, self).__init__()
+        self.commonForm = commonForm()
+        self.widget_1.layout().addWidget(self.commonForm)
+        for i in ip.AdaptThresh.ThreshTypes:
+            self.comboBoxThresholdType.addItem(i.name)
+        for i in ip.AdaptThresh.AdaptMethods:
+            self.comboBoxAdaptiveMethod.addItem(i.name)
+
+    def get_name(self):
+        return ip.Thresh.name
+
+    def set_image_label_list(self, image_label_list):
+        self.commonForm.set_image_label_list(image_label_list)
+
+    def get_xml_element(self):
+        root = ElementTree.Element('module')
+        root.set('name', self.get_name())
+        root.append(self.commonForm.get_xml_element())
+        elem1 = ElementTree.SubElement(root, 'maxValue')
+        elem1.text = str(self.spinBoxMaxValue.value())
+        elem2 = ElementTree.SubElement(root, 'adaptiveMethod')
+        elem2.text = str(self.comboBoxAdaptiveMethod.currentText())
+        elem3 = ElementTree.SubElement(root, 'thresholdType')
+        elem3.text = str(self.comboBoxThresholdType.currentText())
+        elem4 = ElementTree.SubElement(root, 'blockSize')
+        elem4.text = str(self.spinBoxBlockSize.value())
+        elem5 = ElementTree.SubElement(root, 'param1')
+        elem5.text = str(self.spinBoxParam1.value())
+        return root
+
+    def set_xml_element(self, root):
+        self.commonForm.set_xml_element(root.find('common'))
+        mv = int(root.find('maxValue').text)
+        bs = int(root.find('blockSize').text)
+        p1 = int(root.find('param1').text)
+        am = ip.AdaptThresh.AdaptMethods[str(root.find('adaptiveMethod').text)]
+        tt = ip.AdaptThresh.ThreshTypes[str(root.find('thresholdType').text)]
+        self.spinBoxMaxValue.setValue(mv)
+        self.spinBoxBlockSize.setValue(bs)
+        self.spinBoxParam1.setValue(p1)
+        self.comboBoxAdaptiveMethod.setCurrentIndex(am-1)
+        self.comboBoxThresholdType.setCurrentIndex(tt-1)
 
 
 class findContoursForm(AbstractForm, find_contours_ui.Ui_Form):

@@ -1,6 +1,7 @@
 import cv2
 import enum
 import error
+import distutils.util
 import numpy as np
 import pyocr
 from PIL import Image
@@ -69,7 +70,44 @@ class Thresh():
         thresh_type_str = str(root.find('threshType').text)
         thresh_type = cls.ThreshTypes[thresh_type_str]
         cv2_thresh_type = cls.cv2_thresh_types[thresh_type-1]
+        otsu_bool = distutils.util.strtobool(str(root.find('otsu').text))
+        if otsu_bool:
+            if len(obj.image.shape) is not 2:
+                raise error.ModuleError('input image must be one color only!')
+            thresh = 0
+            cv2_thresh_type = cv2_thresh_type + cv2.THRESH_OTSU
         _, image = cv2.threshold(obj.image, thresh, max_val, cv2_thresh_type)
+        return ImageObj(image, obj.code, obj.contours)
+
+
+class AdaptThresh():
+    name = 'adaptiveThreshold'
+
+    thresh_type_names = \
+        ['BINARY', 'BINARY_INV', 'TRUNC', 'TOZERO', 'TOZERO_INV']
+    ThreshTypes = enum.IntEnum('Thresh', thresh_type_names)
+    cv2_thresh_types = \
+        [cv2.THRESH_BINARY, cv2.THRESH_BINARY_INV, cv2.THRESH_TRUNC,
+         cv2.THRESH_TOZERO, cv2.THRESH_TOZERO_INV]
+
+    adapt_method_names = \
+        ['MEAN_C', 'GAUSSIAN_C']
+    AdaptMethods = enum.IntEnum('Adapt', adapt_method_names)
+    cv2_adapt_methods = \
+        [cv2.ADAPTIVE_THRESH_MEAN_C, cv2.ADAPTIVE_THRESH_GAUSSIAN_C]
+
+    @classmethod
+    def get_image(cls, root, obj, _):
+        if len(obj.image.shape) is not 2:
+            raise error.ModuleError('input image must be one color only!')
+        mv = int(root.find('maxValue').text)
+        bs = int(root.find('blockSize').text)
+        p1 = int(root.find('param1').text)
+        am = AdaptThresh.AdaptMethods[str(root.find('adaptiveMethod').text)]
+        tt = AdaptThresh.ThreshTypes[str(root.find('thresholdType').text)]
+        cv2_am = cls.cv2_adapt_methods[am-1]
+        cv2_tt = cls.cv2_thresh_types[tt-1]
+        image = cv2.adaptiveThreshold(obj.image, mv, cv2_am, cv2_tt, bs, p1)
         return ImageObj(image, obj.code, obj.contours)
 
 
@@ -129,9 +167,9 @@ class kNNnumber():
         self.knn.train(train, train_labels)
 
     def get_image(self, root, obj, _):
-        k = int(root.find('K').text)
         if len(obj.image.shape) is not 2:
-                raise error.ModuleError('input image must be one color only!')
+            raise error.ModuleError('input image must be one color only!')
+        k = int(root.find('K').text)
         test_gray = cv2.resize(obj.image, (20, 20))
         test = test_gray.reshape(-1, 400).astype(np.float32)
         ret, result, neighbours, dist = self.knn.find_nearest(test, k)
@@ -162,7 +200,7 @@ class Pyocr():
     def __init__(self):
         self.tools = pyocr.get_available_tools()
         if len(self.tools) == 0:
-                raise error.ModuleError('No OCR tool found')
+            raise error.ModuleError('No OCR tool found')
         self.tool_names = map(lambda n:n.get_name(), self.tools)
         self.setTool(self.tool_names[0])
 

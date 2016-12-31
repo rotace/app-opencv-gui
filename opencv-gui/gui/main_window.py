@@ -132,6 +132,8 @@ class Ui_MainWindow(object):
         self.actionKNNnumber.setObjectName("actionKNNnumber")
         self.actionPyocr = QtWidgets.QAction(MainWindow)
         self.actionPyocr.setObjectName("actionPyocr")
+        self.actionAdaptiveThreshold = QtWidgets.QAction(MainWindow)
+        self.actionAdaptiveThreshold.setObjectName("actionAdaptiveThreshold")
         self.menu_File.addAction(self.actionOpen)
         self.menu_File.addAction(self.actionSave)
         self.menu_File.addAction(self.actionSave_As)
@@ -139,6 +141,7 @@ class Ui_MainWindow(object):
         self.menuFilter.addAction(self.actionCanny)
         self.menuFilter.addAction(self.actionCvtColor)
         self.menuFilter.addAction(self.actionThreshold)
+        self.menuFilter.addAction(self.actionAdaptiveThreshold)
         self.menuFilter.addAction(self.actionFindContours)
         self.menuFilter.addAction(self.actionDrawContours)
         self.menuFilter.addAction(self.actionKNNnumber)
@@ -171,4 +174,5 @@ class Ui_MainWindow(object):
         self.actionDrawContours.setText(_translate("MainWindow", "drawContours"))
         self.actionKNNnumber.setText(_translate("MainWindow", "kNNnumber"))
         self.actionPyocr.setText(_translate("MainWindow", "pyocr"))
+        self.actionAdaptiveThreshold.setText(_translate("MainWindow", "adaptiveThreshold"))
 

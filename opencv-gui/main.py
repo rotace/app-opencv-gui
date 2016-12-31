@@ -24,6 +24,8 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
         self.actionCanny.triggered.connect(self.add_canny)
         self.actionCvtColor.triggered.connect(self.add_cvt_color)
         self.actionThreshold.triggered.connect(self.add_threshold)
+        self.actionAdaptiveThreshold \
+            .triggered.connect(self.add_adaptive_threshold)
         self.actionFindContours.triggered.connect(self.add_find_contours)
         self.actionDrawContours.triggered.connect(self.add_draw_contours)
         self.actionKNNnumber.triggered.connect(self.add_knn_number)
@@ -155,6 +157,13 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
     def add_threshold(self):
         form = forms.thresholdForm()
         module = ip.Thresh
+        name = module.name
+        self.insert_items(form, module, name)
+        return (form, module)
+
+    def add_adaptive_threshold(self):
+        form = forms.adaptiveThresholdForm()
+        module = ip.AdaptThresh
         name = module.name
         self.insert_items(form, module, name)
         return (form, module)

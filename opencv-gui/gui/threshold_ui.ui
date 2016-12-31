@@ -23,23 +23,10 @@
    <item row="1" column="0">
     <widget class="QWidget" name="widget_2" native="true">
      <layout class="QGridLayout" name="gridLayout_3">
-      <item row="0" column="0">
-       <widget class="QLabel" name="labelThresh">
+      <item row="3" column="0">
+       <widget class="QLabel" name="labelOtsu">
         <property name="text">
-         <string>thresh</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QSlider" name="horizontalSliderMin">
-        <property name="maximum">
-         <number>255</number>
-        </property>
-        <property name="value">
-         <number>100</number>
-        </property>
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
+         <string>auto thresh</string>
         </property>
        </widget>
       </item>
@@ -53,23 +40,17 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="labelMaxVal">
+      <item row="2" column="0">
+       <widget class="QLabel" name="labelType">
         <property name="text">
-         <string>maxVal</string>
+         <string>thresholdType</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="1">
-       <widget class="QSlider" name="horizontalSliderMax">
-        <property name="maximum">
-         <number>255</number>
-        </property>
-        <property name="value">
-         <number>200</number>
-        </property>
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
+      <item row="0" column="0">
+       <widget class="QLabel" name="labelThresh">
+        <property name="text">
+         <string>thresh</string>
         </property>
        </widget>
       </item>
@@ -79,17 +60,59 @@
          <number>255</number>
         </property>
         <property name="value">
-         <number>200</number>
+         <number>255</number>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QSlider" name="horizontalSliderMaxVal">
+        <property name="maximum">
+         <number>255</number>
+        </property>
+        <property name="value">
+         <number>255</number>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="labelMaxVal">
+        <property name="text">
+         <string>maxVal</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QSlider" name="horizontalSliderThresh">
+        <property name="maximum">
+         <number>255</number>
+        </property>
+        <property name="value">
+         <number>100</number>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="invertedAppearance">
+         <bool>false</bool>
+        </property>
+        <property name="invertedControls">
+         <bool>false</bool>
+        </property>
+        <property name="tickPosition">
+         <enum>QSlider::NoTicks</enum>
         </property>
        </widget>
       </item>
       <item row="2" column="1">
-       <widget class="QComboBox" name="comboBox"/>
+       <widget class="QComboBox" name="comboBoxThresholdType"/>
       </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="labelType">
+      <item row="3" column="1">
+       <widget class="QCheckBox" name="checkBoxOtsu">
         <property name="text">
-         <string>thresholdType</string>
+         <string>Otsu Binalization</string>
         </property>
        </widget>
       </item>
@@ -106,39 +129,39 @@
  <resources/>
  <connections>
   <connection>
-   <sender>horizontalSliderMin</sender>
+   <sender>horizontalSliderThresh</sender>
    <signal>valueChanged(int)</signal>
    <receiver>spinBoxThresh</receiver>
    <slot>setValue(int)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>265</x>
-     <y>195</y>
+     <x>296</x>
+     <y>186</y>
     </hint>
     <hint type="destinationlabel">
-     <x>408</x>
-     <y>194</y>
+     <x>362</x>
+     <y>185</y>
     </hint>
    </hints>
   </connection>
   <connection>
    <sender>spinBoxThresh</sender>
    <signal>valueChanged(int)</signal>
-   <receiver>horizontalSliderMin</receiver>
+   <receiver>horizontalSliderThresh</receiver>
    <slot>setValue(int)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>408</x>
-     <y>194</y>
+     <x>362</x>
+     <y>185</y>
     </hint>
     <hint type="destinationlabel">
-     <x>318</x>
-     <y>195</y>
+     <x>296</x>
+     <y>186</y>
     </hint>
    </hints>
   </connection>
   <connection>
-   <sender>horizontalSliderMax</sender>
+   <sender>horizontalSliderMaxVal</sender>
    <signal>valueChanged(int)</signal>
    <receiver>spinBoxMaxVal</receiver>
    <slot>setValue(int)</slot>
@@ -156,16 +179,48 @@
   <connection>
    <sender>spinBoxMaxVal</sender>
    <signal>valueChanged(int)</signal>
-   <receiver>horizontalSliderMax</receiver>
+   <receiver>horizontalSliderMaxVal</receiver>
    <slot>setValue(int)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>408</x>
-     <y>229</y>
+     <x>362</x>
+     <y>220</y>
     </hint>
     <hint type="destinationlabel">
-     <x>316</x>
-     <y>230</y>
+     <x>296</x>
+     <y>221</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxOtsu</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>horizontalSliderThresh</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>147</x>
+     <y>265</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>154</x>
+     <y>177</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBoxOtsu</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spinBoxThresh</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>192</x>
+     <y>274</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>336</x>
+     <y>170</y>
     </hint>
    </hints>
   </connection>
