@@ -13,7 +13,7 @@ run:all
 ifeq (${python_version_major},2)
 	python main.py
 else
-	@echo "!!! python vesrion should be 3.x !!!"
+	@echo "!!! python vesrion should be 2.x !!!"
 endif
 
 clean:
