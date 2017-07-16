@@ -10,6 +10,15 @@ import forms
 import error
 import imageprocess as ip
 
+# version check
+from platform import python_version
+from PyQt5.QtCore import QT_VERSION_STR
+from PyQt5.Qt import PYQT_VERSION_STR
+from sip import SIP_VERSION_STR
+assert(python_version() == '2.7.12')
+assert(QT_VERSION_STR == '5.6.0')
+assert(PYQT_VERSION_STR == '5.6')
+assert(SIP_VERSION_STR == '4.18')
 assert(cv2.__version__ == '2.4.11')
 
 
@@ -279,7 +288,7 @@ class MainForm(QtWidgets.QMainWindow, main_window.Ui_MainWindow):
 
 def main():
     app = QtWidgets.QApplication(sys.argv)
-    MainForm()
+    form = MainForm()
     app.exec_()
 
 if __name__ == '__main__':
