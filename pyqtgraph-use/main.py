@@ -74,6 +74,7 @@ class EthernetImporter(QtWidgets.QWidget):
     """
     This is Ethernet Importer
     """
+
     def __init__(self):
         super().__init__()
 
@@ -84,6 +85,15 @@ class EthernetImporter(QtWidgets.QWidget):
         self.label  = QtWidgets.QLabel('Ethernet Importer', self)
         self.layout.addWidget(self.label)
         self.setLayout(self.layout)
+
+    def get_name(self):
+        return 'Ethernet'
+    
+    def get_data_signal(self):
+        return self.transceiver.sigDataEmited
+
+    def is_playing(self):
+        return not self.transceiver.is_stoped()
 
     def play(self):
         if self.transceiver.is_stoped():
@@ -114,7 +124,19 @@ class FileImporter(QtWidgets.QWidget):
         self.label  = QtWidgets.QLabel('File Importer', self)
         self.layout.addWidget(self.label)
         self.setLayout(self.layout)
+
+    def get_name(self):
+        return 'File'
+
+    def get_data_signal(self):
+        return self.sigDataEmited
+
+    def is_playing(self):
+        return False
     
+    def play(self):
+        pass
+
 
 class WebCamImporter(QtWidgets.QWidget):
     """
@@ -135,6 +157,15 @@ class WebCamImporter(QtWidgets.QWidget):
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self._set_data)
         self.timer.start(100)
+
+    def get_name(self):
+        return 'WebCam'
+
+    def get_data_signal(self):
+        return self.sigDataEmited
+
+    def is_playing(self):
+        return self.timer.isActive()
 
     def play(self):
         if self.timer.isActive():
@@ -169,46 +200,52 @@ class StreamController(QtWidgets.QWidget):
         self.player.setLayout(player_layout)
         self.layout.addWidget(self.player)
         
-        combo = QtWidgets.QComboBox()
-        combo.addItem('WebCam')
-        combo.addItem('File')
-        combo.addItem('Ethernet')
-        combo.setCurrentIndex(0)
-        combo.currentIndexChanged.connect(self._change_importer)
-        self.layout.addWidget(combo)
+        self.importers = []
+        self.importers.append(WebCamImporter())
+        self.importers.append(FileImporter())
+        self.importers.append(EthernetImporter())
 
-        self.importer = None
+        self.tab = QtWidgets.QTabWidget()
+        self.tab.currentChanged.connect(self._change_importer)
+        [ self.tab.addTab(i, i.get_name()) for i in self.importers ]
+        [ i.get_data_signal().connect(self._set_data) for i in self.importers ]
+        [ i.play() for i in self.importers if i.is_playing() ]
+        self.layout.addWidget(self.tab)
+        
         self._change_importer(0)
 
     def _change_importer(self, index):
-        old_importer = self.importer
+        # get current widget
+        importer = self.tab.currentWidget()
+        # stop playing all widgets
+        [ i.play() for i in self.importers if i.is_playing() ]
+        # disconnect all widgets
+        self.btn_play.disconnect()
+        # set connect and text
+        self.btn_play.clicked.connect(self.play)
+        self.btn_play.clicked.connect(importer.play)
+        self.btn_play.setText('|>')
         if   index == 0:
-            self.importer = WebCamImporter()
-            self.importer.sigDataEmited.connect(self._set_data)
             self.btn_back.setEnabled(False)
             self.btn_step.setEnabled(False)
-            self.btn_play.clicked.connect(self.importer.play)
+
         elif index == 1:
-            self.importer = FileImporter()
-            self.importer.sigDataEmited.connect(self._set_data)
             self.btn_back.setEnabled(True)
             self.btn_step.setEnabled(True)
-            # self.btn_play.clicked.connect(self.importer.play)
+
         elif index == 2:
-            self.importer = EthernetImporter()
-            self.importer.transceiver.sigDataEmited.connect(self._set_data)
             self.btn_back.setEnabled(False)
             self.btn_step.setEnabled(False)
-            self.btn_play.clicked.connect(self.importer.play)
+
         else:
             sentence = 'Assertion Failed: index:{0}'.format(index)
             assert False, sentence
 
-        if old_importer is None:
-            self.layout.addWidget(self.importer)
+    def play(self):
+        if self.btn_play.text() == '|>':
+            self.btn_play.setText('||')
         else:
-            self.layout.replaceWidget(old_importer, self.importer)
-            old_importer.deleteLater()
+            self.btn_play.setText('|>')
 
     def _set_data(self, data):
         ## Set the raw data as the input value to the flowchart
