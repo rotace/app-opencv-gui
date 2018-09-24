@@ -62,7 +62,7 @@ class UnsharpMaskNode(AbstractImageProcessNode):
 
 
 
-def add_image_process_library(library):
+def add_library(library):
     if isinstance( library, pgfc.NodeLibrary.NodeLibrary ):
         library.addNodeType(CannyNode , [('Process',),])
         library.addNodeType(UnsharpMaskNode , [('Image',), 

@@ -20,8 +20,8 @@ import view
 
 # LIBRARY = pgfc.library.LIBRARY.copy() # start with the default node set
 LIBRARY = pgfc.NodeLibrary.NodeLibrary() # start with empty node set
-LIBRARY = imageprocess.add_image_process_library(LIBRARY)
-LIBRARY = view.add_image_process_library(LIBRARY)
+LIBRARY = imageprocess.add_library(LIBRARY)
+LIBRARY = view.add_library(LIBRARY)
 
 
 
