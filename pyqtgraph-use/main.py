@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This example demonstrates writing a custom Node subclass for use with flowcharts.
-
-We implement a couple of simple image processing nodes.
+OpenCV-GUI implemented by pyqtgraph
 """
 
 import sys
@@ -10,11 +8,13 @@ import time
 import threading
 
 import numpy as np
+import cv2
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 import pyqtgraph.dockarea as pgda
 import pyqtgraph.flowchart as pgfc
+
 import imageprocess
 import view
 
@@ -33,20 +33,32 @@ class EthernetTransceiver(QtCore.QThread):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.quit_event = threading.Event()
         self.stop_event = threading.Event()
 
     def run(self):
         ## snatch thread from event loop method, when main routine wake up
-        while not self.stop_event.is_set():
+        while not self.quit_event.is_set():
             time.sleep(0.1)
-            self.setData()
+            if self.stop_event.is_set():
+                continue
+            self._set_data()
         ## return thread  to  event loop method, when main routine exited
         self.exec_()
 
-    def stop(self):
+    def quit_while_loop(self):
+        self.quit_event.set()
+    
+    def stop_while_loop(self):
         self.stop_event.set()
+    
+    def start_while_loop(self):
+        self.stop_event.clear()
 
-    def setData(self):
+    def is_stoped(self):
+        return self.stop_event.is_set()
+
+    def _set_data(self):
         ## generate random input data
         data = np.random.normal(size=(100,100))
         data = 25 * pg.gaussianFilter(data, (5,5))
@@ -73,9 +85,15 @@ class EthernetImporter(QtWidgets.QWidget):
         self.layout.addWidget(self.label)
         self.setLayout(self.layout)
 
+    def play(self):
+        if self.transceiver.is_stoped():
+            self.transceiver.start_while_loop()
+        else:
+            self.transceiver.stop_while_loop()
+
     def deleteLater(self):
         # set stop_event and wait to exit main routine
-        self.transceiver.stop()
+        self.transceiver.quit_while_loop()
         # then, wake up event loop
         # emit finished signal and exit event loop
         self.transceiver.quit() 
@@ -112,6 +130,22 @@ class WebCamImporter(QtWidgets.QWidget):
         self.layout.addWidget(self.label)
         self.setLayout(self.layout)
 
+        self.capture = cv2.VideoCapture(0)
+
+        self.timer = QtCore.QTimer(self)
+        self.timer.timeout.connect(self._set_data)
+        self.timer.start(100)
+
+    def play(self):
+        if self.timer.isActive():
+            self.timer.stop()
+        else:
+            self.timer.start()
+
+    def _set_data(self):
+        success, image = self.capture.read()
+        self.sigDataEmited.emit(dict(image=image))
+
 
 class StreamController(QtWidgets.QWidget):
     """
@@ -140,32 +174,45 @@ class StreamController(QtWidgets.QWidget):
         combo.addItem('File')
         combo.addItem('Ethernet')
         combo.setCurrentIndex(0)
-        combo.currentIndexChanged.connect(self.changeImporter)
+        combo.currentIndexChanged.connect(self._change_importer)
         self.layout.addWidget(combo)
 
-        self.importer = WebCamImporter()
-        self.layout.addWidget(self.importer)
+        self.importer = None
+        self._change_importer(0)
 
-    def changeImporter(self, index):
+    def _change_importer(self, index):
         old_importer = self.importer
         if   index == 0:
             self.importer = WebCamImporter()
-            self.importer.sigDataEmited.connect(self.setData)
+            self.importer.sigDataEmited.connect(self._set_data)
+            self.btn_back.setEnabled(False)
+            self.btn_step.setEnabled(False)
+            self.btn_play.clicked.connect(self.importer.play)
         elif index == 1:
             self.importer = FileImporter()
-            self.importer.sigDataEmited.connect(self.setData)
+            self.importer.sigDataEmited.connect(self._set_data)
+            self.btn_back.setEnabled(True)
+            self.btn_step.setEnabled(True)
+            # self.btn_play.clicked.connect(self.importer.play)
         elif index == 2:
             self.importer = EthernetImporter()
-            self.importer.transceiver.sigDataEmited.connect(self.setData)
+            self.importer.transceiver.sigDataEmited.connect(self._set_data)
+            self.btn_back.setEnabled(False)
+            self.btn_step.setEnabled(False)
+            self.btn_play.clicked.connect(self.importer.play)
         else:
             sentence = 'Assertion Failed: index:{0}'.format(index)
             assert False, sentence
-        self.layout.replaceWidget(old_importer, self.importer)
-        old_importer.deleteLater()
 
-    def setData(self, data):
+        if old_importer is None:
+            self.layout.addWidget(self.importer)
+        else:
+            self.layout.replaceWidget(old_importer, self.importer)
+            old_importer.deleteLater()
+
+    def _set_data(self, data):
         ## Set the raw data as the input value to the flowchart
-        self.flowchart.setInput(import_data=data['image'])
+        self.flowchart.setInput(import_data=data)
 
 
 class MainForm(QtWidgets.QMainWindow):
@@ -175,7 +222,7 @@ class MainForm(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle('pyqtgraph example: FlowchartCustomNode')
+        self.setWindowTitle('app-opencv-gui')
         cw = QtWidgets.QWidget()
         self.setCentralWidget(cw)
         self.resize(1000, 500)
@@ -207,11 +254,11 @@ class MainForm(QtWidgets.QMainWindow):
         ## initial flowchart setting
         node0 = fc.createNode('ImageView', pos=(100, -150))
         node1 = fc.createNode('Canny', pos=(0,-150))
-        dock0 = node0.getDock()
+        dock0 = node0.get_dock()
         da.addDock(dock0)
-        # fc.connectTerminals(fc['import_data'], node0['dataIn'])
-        fc.connectTerminals(fc['import_data'], node1['dataIn'])
-        fc.connectTerminals(node1['dataOut'] , node0['dataIn'])
+        # fc.connectTerminals(fc['import_data'], node0['data_in'])
+        fc.connectTerminals(fc['import_data'], node1['data_in'])
+        fc.connectTerminals(node1['data_out'], node0['data_in'])
         fc.connectTerminals(fc['import_data'], fc['export_data'])
 
         self.fc = fc

@@ -29,7 +29,7 @@ class AbstractViewNode(pgfclc.CtrlNode):
         ('view',  'button', {}),
     ]
     def __init__(self, name):
-        pgfclc.CtrlNode.__init__(self, name, terminals={'dataIn': {'io':'in'}})
+        pgfclc.CtrlNode.__init__(self, name, terminals={'data_in': {'io':'in'}})
 
         self.view = None
         self.sub_window = None
@@ -53,14 +53,11 @@ class AbstractViewNode(pgfclc.CtrlNode):
         else:
             self.sub_window.hide()
 
-    def _setView(self, view):
+    def set_view(self, view):
         self.view = view
         self.dock.addWidget(view)
-
-    def _getView(self):
-        return self.view
         
-    def getDock(self):
+    def get_dock(self):
         # disable button and give dock instance to external widget
         self.button.setEnabled(False)
         self.button.setText('see right window')
@@ -86,17 +83,17 @@ class ImageViewNode(AbstractViewNode):
             ## my_pyqtgraph's  ImageView
             self.image_view = mypg.ImageView()
 
-        self._setView(self.image_view)
+        self.set_view(self.image_view)
 
-    def process(self, dataIn, display=True):
+    def process(self, data_in, display=True):
         ## if process is called with display=False, then the flowchart is being operated
         ## in batch processing mode, so we should skip displaying to improve performance.
         
         if display and self.image_view is not None:
-            if dataIn is None:
+            if data_in is None:
                 self.image_view.setImage(np.zeros((1,1)))
             else:
-                self.image_view.setImage(dataIn)
+                self.image_view.setImage(data_in['image'].transpose((1,0)))
 
 
 

@@ -17,8 +17,8 @@ class AbstractImageProcessNode(pgfclc.CtrlNode):
     def __init__(self, name):
         ## Define the input / output terminals available on this node
         terminals = {
-            'dataIn': dict(io='in'),    # each terminal needs at least a name and
-            'dataOut': dict(io='out'),  # to specify whether it is input or output
+            'data_in' : dict(io='in'),   # each terminal needs at least a name and
+            'data_out': dict(io='out'),  # to specify whether it is input or output
         }                              # other more advanced options are available
                                        # as well..
         pgfclc.CtrlNode.__init__(self, name, terminals=terminals)
@@ -30,15 +30,16 @@ class CannyNode(AbstractImageProcessNode):
     """
     nodeName = "Canny"
     uiTemplate = [
-        ('min', 'spin', {'value': 1, 'step': 1, 'bounds': [0, None], 'int':True }),
-        ('max', 'spin', {'value': 1, 'step': 1, 'bounds': [0, None], 'int':True }),
+        ('min', 'spin', {'value': 100, 'step': 1, 'bounds': [0, None], 'int':True }),
+        ('max', 'spin', {'value': 200, 'step': 1, 'bounds': [0, None], 'int':True }),
     ]
-    def process(self, dataIn, display=True):
+    def process(self, data_in, display=True):
         # CtrlNode has created self.ctrls, which is a dict containing {ctrlName: widget}
         min = self.ctrls['min'].value()
         max = self.ctrls['max'].value()
-        dataOut = cv2.Canny(dataIn, min, max)
-        return {'dataOut': dataOut}
+        data_out = data_in
+        data_out['image'] = cv2.Canny(data_in['image'], min, max)
+        return {'data_out': data_out}
 
 
 
@@ -51,12 +52,12 @@ class UnsharpMaskNode(AbstractImageProcessNode):
         ('sigma',  'spin', {'value': 1.0, 'step': 1.0, 'bounds': [0.0, None]}),
         ('strength', 'spin', {'value': 1.0, 'dec': True, 'step': 0.5, 'minStep': 0.01, 'bounds': [0.0, None]}),
     ]
-    def process(self, dataIn, display=True):
+    def process(self, data_in, display=True):
         # CtrlNode has created self.ctrls, which is a dict containing {ctrlName: widget}
         sigma = self.ctrls['sigma'].value()
         strength = self.ctrls['strength'].value()
-        output = dataIn - (strength * pg.gaussianFilter(dataIn, (sigma,sigma)))
-        return {'dataOut': output}
+        data_out = data_in - (strength * pg.gaussianFilter(data_in, (sigma,sigma)))
+        return {'data_out': data_out}
 
 
 
