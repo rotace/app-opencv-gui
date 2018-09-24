@@ -1,7 +1,7 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
-import pyqtgraph.pyqtgraph as pg
-import pyqtgraph.pyqtgraph.flowchart as pgfc
-import pyqtgraph.pyqtgraph.flowchart.library.common as pgfclc
+import pyqtgraph as pg
+import pyqtgraph.flowchart as pgfc
+import pyqtgraph.flowchart.library.common as pgfclc
 
 
 class UnsharpMaskNode(pgfclc.CtrlNode):

@@ -10,21 +10,25 @@ import sys
 import numpy as np
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-import pyqtgraph.pyqtgraph as pg
-import pyqtgraph.pyqtgraph.dockarea as pgda
-import pyqtgraph.pyqtgraph.flowchart as pgfc
+import pyqtgraph as pg
+import pyqtgraph.dockarea as pgda
+import pyqtgraph.flowchart as pgfc
+import pyqtgraph.flowchart.library.common as pgfclc
 
 import imageprocess
 
 
-class ImageViewNode(pgfc.Node):
+class ImageViewNode(pgfclc.CtrlNode):
     """Node that displays image data in an ImageView widget"""
     nodeName = 'ImageView'
-    
+    uiTemplate = [
+        ('sigma',  'spin', {'value': 1.0, 'step': 1.0, 'bounds': [0.0, None]}),
+        ('strength', 'spin', {'value': 1.0, 'dec': True, 'step': 0.5, 'minStep': 0.01, 'bounds': [0.0, None]}),
+    ]
     def __init__(self, name):
         self.view = None
         ## Initialize node with only a single input terminal
-        pgfc.Node.__init__(self, name, terminals={'dataIn': {'io':'in'}}, allowRemove=False)
+        pgfclc.CtrlNode.__init__(self, name, terminals={'dataIn': {'io':'in'}})
         
     def setView(self, view):  ## setView must be called by the program
         self.view = view
@@ -44,7 +48,7 @@ class ImageViewNode(pgfc.Node):
 # LIBRARY = pgfc.library.LIBRARY.copy() # start with the default node set
 LIBRARY = pgfc.NodeLibrary.NodeLibrary() # start with empty node set
 LIBRARY = imageprocess.add_image_process_library(LIBRARY)
-LIBRARY.addNodeType(ImageViewNode, [])
+LIBRARY.addNodeType(ImageViewNode, []) # unvisible from context menu for not enabling to add
 
 
 class MainForm(QtWidgets.QMainWindow):
@@ -55,17 +59,11 @@ class MainForm(QtWidgets.QMainWindow):
         super().__init__()
 
         self.setWindowTitle('pyqtgraph example: FlowchartCustomNode')
-        da = pgda.DockArea()
-        self.setCentralWidget(da)
+        cw = QtWidgets.QWidget()
+        self.setCentralWidget(cw)
         self.resize(1000, 500)
-
-        # Create Docks
-        d1 = pgda.Dock("FlowChart", size=(300, 200))
-        d2 = pgda.Dock("ImageView", size=(300, 400))
-
-        da.addDock(d1, "left")
-        da.addDock(d2, "right")
-
+        layout = QtWidgets.QGridLayout()
+        cw.setLayout(layout)
 
         ## Create an empty flowchart with a single input and output
         fc = pgfc.Flowchart(terminals={
@@ -73,10 +71,22 @@ class MainForm(QtWidgets.QMainWindow):
             'export_data': {'io': 'out'}
         })
         fc.setLibrary(LIBRARY)
-        d1.addWidget(fc.widget())
+        layout.addWidget(fc.widget(), 0,0)
+
+        # Create Docks
+        # da = pgda.DockArea()
+        # layout.addWidget(da, 0,1)
+
+        # d1 = pgda.Dock("FlowChart", size=(300, 200))
+        # d2 = pgda.Dock("ImageView", size=(300, 400))
+        # d1.hideTitleBar()
+
+        # da.addDock(d1, "left")
+        # da.addDock(d2, "right")
 
         iv = pg.ImageView()
-        d2.addWidget(iv)
+        # d2.addWidget(iv)
+        layout.addWidget(iv, 0,1)
         ivNode = fc.createNode('ImageView', pos=(0, -150))
         ivNode.setView(iv)
 
