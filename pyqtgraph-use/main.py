@@ -5,6 +5,7 @@ OpenCV-GUI implemented by pyqtgraph
 
 import sys
 import time
+import socket
 import threading
 
 import numpy as np
@@ -25,14 +26,15 @@ LIBRARY = view.add_library(LIBRARY)
 
 
 
-class EthernetTransceiver(QtCore.QThread):
+class PacketCapturer(QtCore.QThread):
     """
-    This is Ethernet Transceiver
+    This is Packet Capturer
     """
     sigDataEmited = QtCore.pyqtSignal(dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        # 
         self.quit_event = threading.Event()
         self.stop_event = threading.Event()
 
@@ -70,45 +72,140 @@ class EthernetTransceiver(QtCore.QThread):
         self.sigDataEmited.emit(dict(image=image))
 
 
-class EthernetImporter(QtWidgets.QWidget):
+class PacketImporter(QtWidgets.QWidget):
     """
-    This is Ethernet Importer
+    This is Packet Importer
     """
 
     def __init__(self):
         super().__init__()
 
-        self.transceiver = EthernetTransceiver()
-        self.transceiver.start()
+        self.capturer = PacketCapturer()
+        self.capturer.start()
 
         self.layout = QtWidgets.QHBoxLayout()
-        self.label  = QtWidgets.QLabel('Ethernet Importer', self)
+        self.label  = QtWidgets.QLabel('Packet Importer', self)
         self.layout.addWidget(self.label)
         self.setLayout(self.layout)
 
     def get_name(self):
-        return 'Ethernet'
+        return 'Packet'
     
     def get_data_signal(self):
-        return self.transceiver.sigDataEmited
+        return self.capturer.sigDataEmited
 
     def is_playing(self):
-        return not self.transceiver.is_stoped()
+        return not self.capturer.is_stoped()
 
     def play(self):
-        if self.transceiver.is_stoped():
-            self.transceiver.start_while_loop()
+        if self.capturer.is_stoped():
+            self.capturer.start_while_loop()
         else:
-            self.transceiver.stop_while_loop()
+            self.capturer.stop_while_loop()
 
     def deleteLater(self):
         # set stop_event and wait to exit main routine
-        self.transceiver.quit_while_loop()
+        self.capturer.quit_while_loop()
         # then, wake up event loop
         # emit finished signal and exit event loop
-        self.transceiver.quit() 
+        self.capturer.quit() 
         # delete myself
         super().deleteLater()
+
+
+class SocketImporter(QtWidgets.QWidget):
+    """
+    This is Socket Importer
+    """
+    sigDataEmited = QtCore.pyqtSignal(dict)
+
+    def __init__(self):
+        super().__init__()
+
+        self.layout = QtWidgets.QGridLayout()
+        self.label_host = QtWidgets.QLabel('Server Host', self)
+        self.label_tcp = QtWidgets.QLabel('TCP Port', self)
+        self.line_edit_host = QtWidgets.QLineEdit(self)
+        self.spin_box_tcp = QtWidgets.QSpinBox(self)
+
+        self.layout.addWidget(self.label_host, 0,0)
+        self.layout.addWidget(self.line_edit_host, 0,1)
+        self.layout.addWidget(self.label_tcp, 1,0)
+        self.layout.addWidget(self.spin_box_tcp, 1,1)
+        self.setLayout(self.layout)
+
+        self.line_edit_host.setText('localhost')
+        self.spin_box_tcp.setMinimum(0)
+        self.spin_box_tcp.setMaximum(65535)
+        self.spin_box_tcp.setValue(50000)
+
+        self.tcp_sock = None
+        self.udp_sock = None
+
+        self.timer = QtCore.QTimer(self)
+        self.timer.timeout.connect(self._recv_data)
+        self.timer.start(1000)
+        self.timer.stop()
+
+    def get_name(self):
+        return 'Socket'
+
+    def get_data_signal(self):
+        return self.sigDataEmited
+
+    def is_playing(self):
+        return self.timer.isActive()
+    
+    def play(self):
+        if self.timer.isActive():
+            self.timer.stop()
+            try:
+                self.tcp_sock.shutdown(socket.SHUT_RDWR)
+                self.tcp_sock.close()
+                self.udp_sock.close()
+            except socket.error as e:
+                print(e)
+            self.tcp_sock = None
+            self.udp_sock = None
+                
+        else:
+            host = self.line_edit_host.text()
+            port = self.spin_box_tcp.value()
+            assert self.tcp_sock is None, 'TCP Socket is survive illegally'
+            assert self.udp_sock is None, 'UDP Socket is survive illegally'
+            try:
+                ## TCP Connection
+                # self.tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                # self.tcp_sock.bind(self.tcp_sock.getsockname())
+                # self.tcp_sock.connect((host, port))
+                self.tcp_sock = socket.create_connection((host, port))
+
+                ## UDP Connection
+                self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                host = self.udp_sock.getsockname()[0]
+                port = 50030
+                self.udp_sock.bind((host, port))
+
+            except socket.error as e:
+                print(e)
+                return
+
+            self.timer.start()
+
+    def _recv_data(self):
+        self.tcp_sock.send(b"Hello World!")
+        print( self.tcp_sock.recv(4096) )
+
+    def _set_data(self):
+        ## generate random input data
+        data = np.random.normal(size=(100,100))
+        data = 25 * pg.gaussianFilter(data, (5,5))
+        data += np.random.normal(size=(100,100))
+        data[40:60, 40:60] += 15.0
+        data[30:50, 30:50] += 15.0
+        image = np.zeros(shape=(100,100), dtype=np.uint8)
+        image[:,:] = data[:,:]
+        self.sigDataEmited.emit(dict(image=image))
 
 
 class FileImporter(QtWidgets.QWidget):
@@ -125,6 +222,11 @@ class FileImporter(QtWidgets.QWidget):
         self.layout.addWidget(self.label)
         self.setLayout(self.layout)
 
+        self.timer = QtCore.QTimer(self)
+        self.timer.timeout.connect(self._set_data)
+        self.timer.start(100)
+        self.timer.stop()
+
     def get_name(self):
         return 'File'
 
@@ -132,10 +234,24 @@ class FileImporter(QtWidgets.QWidget):
         return self.sigDataEmited
 
     def is_playing(self):
-        return False
+        return self.timer.isActive()
     
     def play(self):
-        pass
+        if self.timer.isActive():
+            self.timer.stop()
+        else:
+            self.timer.start()
+
+    def _set_data(self):
+        ## generate random input data
+        data = np.random.normal(size=(100,100))
+        data = 25 * pg.gaussianFilter(data, (5,5))
+        data += np.random.normal(size=(100,100))
+        data[40:60, 40:60] += 15.0
+        data[30:50, 30:50] += 15.0
+        image = np.zeros(shape=(100,100), dtype=np.uint8)
+        image[:,:] = data[:,:]
+        self.sigDataEmited.emit(dict(image=image))
 
 
 class WebCamImporter(QtWidgets.QWidget):
@@ -175,7 +291,8 @@ class WebCamImporter(QtWidgets.QWidget):
 
     def _set_data(self):
         success, image = self.capture.read()
-        self.sigDataEmited.emit(dict(image=image))
+        if success:
+            self.sigDataEmited.emit(dict(image=image))
 
 
 class StreamController(QtWidgets.QWidget):
@@ -203,7 +320,8 @@ class StreamController(QtWidgets.QWidget):
         self.importers = []
         self.importers.append(WebCamImporter())
         self.importers.append(FileImporter())
-        self.importers.append(EthernetImporter())
+        self.importers.append(SocketImporter())
+        self.importers.append(PacketImporter())
 
         self.tab = QtWidgets.QTabWidget()
         self.tab.currentChanged.connect(self._change_importer)
@@ -234,6 +352,10 @@ class StreamController(QtWidgets.QWidget):
             self.btn_step.setEnabled(True)
 
         elif index == 2:
+            self.btn_back.setEnabled(False)
+            self.btn_step.setEnabled(False)
+
+        elif index == 3:
             self.btn_back.setEnabled(False)
             self.btn_step.setEnabled(False)
 
@@ -272,12 +394,18 @@ class MainForm(QtWidgets.QMainWindow):
             'export_data': {'io': 'out'}
         })
         fc.setLibrary(LIBRARY)
-        layout.addWidget(fc.widget(), 0,0)
+        fw = fc.widget()
+        sp = fw.sizePolicy()
+        sp.setHorizontalStretch(1)
+        sp.setVerticalStretch(1)
+        fw.setSizePolicy(sp)
+        layout.addWidget(fw, 0,0)
 
         ## Create Stream Controller
         sc = StreamController(flowchart=fc)
         sp = sc.sizePolicy()
         sp.setHorizontalStretch(1)
+        sp.setVerticalStretch(0.5)
         sc.setSizePolicy(sp)
         layout.addWidget(sc, 1,0)
 
