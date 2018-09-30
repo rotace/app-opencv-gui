@@ -18,6 +18,8 @@ import pyqtgraph.flowchart as pgfc
 
 import imageprocess
 import view
+import my_scapy
+import scapy
 
 # LIBRARY = pgfc.library.LIBRARY.copy() # start with the default node set
 LIBRARY = pgfc.NodeLibrary.NodeLibrary() # start with empty node set
@@ -158,6 +160,9 @@ class SocketImporter(QtWidgets.QWidget):
     
     def play(self):
         if self.timer.isActive():
+            pkt = my_scapy.MessageProtocol(dataflag='Standby')
+            self.tcp_sock.send(scapy.utils.raw(pkt))
+            time.sleep(0.1)
             self.timer.stop()
             try:
                 self.tcp_sock.shutdown(socket.SHUT_RDWR)
@@ -189,7 +194,9 @@ class SocketImporter(QtWidgets.QWidget):
             except socket.error as e:
                 print(e)
                 return
-
+            
+            pkt = my_scapy.MessageProtocol(dataflag='Running')
+            self.tcp_sock.send(scapy.utils.raw(pkt))
             self.timer.start()
 
     def _recv_data(self):

@@ -3,12 +3,16 @@
 my scapy extension
 """
 
+from collections import defaultdict
+
 from scapy.fields import *
 from scapy.packet import *
 from scapy.plist import PacketList
 from scapy.layers.inet import *
 from scapy.layers.rtp import *
 from scapy.utils import *
+
+from tqdm import tqdm
 
 
 def float_decoder(buffer, len_sign, len_exp, len_coef):
@@ -124,3 +128,195 @@ def float_encoder(buffer, len_sign, len_exp, len_coef):
     return ret
 
 
+class LESignedShortField(Field):
+    def __init__(self, name, default):
+        Field.__init__(self, name, default, "<h")
+
+
+class XLEIntEnumField(LEIntEnumField):
+    def i2repr_one(self, pkt, x):
+        if self not in conf.noenum and not isinstance(x,VolatileValue):
+            try:
+                return self.i2s[x]
+            except KeyError:
+                pass
+            except TypeError:
+                ret = self.i2s_cb(x)
+                if ret is not None:
+                    return ret
+        return lhex(x)
+
+FLAG_DATA = {0x55555555:"Running",
+             0xffffffff:"Standby",
+             }
+
+class MessageProtocol(Packet):
+    """
+    Message Dfinition
+
+    How to Use
+    LEIntField      : 4byte  32bit ( little endian )
+    XLEIntEnumField : 4byte  32bit ( little endian and hex )
+    BitEnumField    : 1byte~ 1bit~ ( Total bits must be 8 x N bits )
+    """
+    name = "MP"
+    fields_desc = [ LEIntField     ("datasize",       12),
+                    XLEIntEnumField("dataflag",       0xffffffff, FLAG_DATA),
+
+                    BitEnumField   ("flag_state",     0, 1, ["Green", "Red"]),
+                    BitEnumField   ("flag_reserved1", 0, 3, {0:"reserved"}),
+                    BitEnumField   ("flag_reserved2", 0, 4, ["reserved"]),
+                    ByteField      ("flag_reserved3", 0),
+                    ByteField      ("flag_reserved4", 0),
+                    ByteField      ("flag_reserved5", 0),
+                    ]
+    
+    def show3(self):
+        """
+        show only low layer info
+        """
+        pkt = self.copy()
+        pkt.remove_payload()
+        pkt.show()
+
+
+def ip_defragment(plist):
+    """defrag(plist) -> plist defragmented as much as possible """
+    frags = defaultdict(lambda:[])
+    final = []
+
+    pos = 0
+    for p in plist:
+        p._defrag_pos = pos
+        pos += 1
+        if IP in p:
+            ip = p[IP]
+            if ip.frag != 0 or ip.flags & 1:
+                ip = p[IP]
+                uniq = (ip.id,ip.src,ip.dst,ip.proto)
+                frags[uniq].append(p)
+                continue
+        final.append(p)
+
+    pbar = tqdm(total=len(frags), desc="IP defrag(1/2) ")
+    defrag = []
+    missfrag = []
+    for lst in six.itervalues(frags):
+        pbar.update(1)
+        lst.sort(key=lambda x: x.frag)
+        p = lst[0]
+        lastp = lst[-1]
+        if p.frag > 0 or lastp.flags & 1 != 0: # first or last fragment missing
+            missfrag += lst
+            continue
+        p = p.copy()
+        if conf.padding_layer in p:
+            del(p[conf.padding_layer].underlayer.payload)
+        ip = p[IP]
+        if ip.len is None or ip.ihl is None:
+            clen = len(ip.payload)
+        else:
+            clen = ip.len - (ip.ihl<<2)
+        txt = conf.raw_layer()
+        for q in lst[1:]:
+            if clen != q.frag<<3: # Wrong fragmentation offset
+                if clen > q.frag<<3:
+                    warning("Fragment overlap (%i > %i) %r || %r ||  %r" % (clen, q.frag<<3, p,txt,q))
+                missfrag += lst
+                break
+            if q[IP].len is None or q[IP].ihl is None:
+                clen += len(q[IP].payload)
+            else:
+                clen += q[IP].len - (q[IP].ihl<<2)
+            if conf.padding_layer in q:
+                del(q[conf.padding_layer].underlayer.payload)
+            txt.add_payload(q[IP].payload.copy())
+        else:
+            ip.flags &= ~1 # !MF
+            del(ip.chksum)
+            del(ip.len)
+            p = p/txt
+            p._defrag_pos = max(x._defrag_pos for x in lst)
+            defrag.append(p)
+    pbar.close()
+    defrag2=[]
+    for p in tqdm(defrag, desc="IP defrag(2/2) "):
+        q = p.__class__(raw(p))
+        q._defrag_pos = p._defrag_pos
+        defrag2.append(q)
+    final += defrag2
+    final += missfrag
+    final.sort(key=lambda x: x._defrag_pos)
+    for p in final:
+        del(p._defrag_pos)
+
+    if hasattr(plist, "listname"):
+        name = "Defragmented %s" % plist.listname
+    else:
+        name = "Defragmented"
+    
+    return PacketList(final, name=name)
+
+
+def rtp_defragment(plist):
+    """ 
+    dfragment rtp packets
+    """
+    frags = defaultdict(lambda:[])
+    final = []
+    mark = 1
+    mark_last = 1
+
+    pos = 0
+    for p in plist:
+        p._defrag_pos = pos
+        pos += 1
+        if RTP in p:
+            rtp  = p[RTP] 
+            mark_last = mark
+            mark = rtp.marker
+            if mark_last == 0 or mark == 0:
+                rtp = p[RTP]
+                uniq = (rtp.timestamp)
+                frags[uniq].append(p)
+                continue
+        final.append(p)
+
+    defrag = []
+    for lst in six.itervalues(frags):
+        lst.sort(key=lambda x: x.sequence)
+        p = lst[0]
+        lastp = lst[-1]
+        # if p.frag > 0 or lastp.flags & 1 != 0: # first or last fragment missing
+        #     missfrag += lst
+        #     continue
+        p = p.copy()
+        rtp = p[RTP]
+        clen = len(rtp.payload)
+        txt = conf.raw_layer()
+        for q in lst[1:]:
+            clen += len(q[RTP].payload)
+            txt.add_payload(q[RTP].payload.copy())
+        else:
+            rtp.marker = 1 # !marker
+            # del(ip.chksum)
+            # del(ip.len)
+            p = p/txt
+            p._defrag_pos = max(x._defrag_pos for x in lst)
+            defrag.append(p)
+    defrag2=[]
+    for p in defrag:
+        q = p.__class__(raw(p))
+        q._defrag_pos = p._defrag_pos
+        defrag2.append(q)
+    final += defrag2
+    final.sort(key=lambda x: x._defrag_pos)
+    for p in final:
+        del(p._defrag_pos)
+
+    if hasattr(plist, "listname"):
+        name = "Defragmented %s" % plist.listname
+    else:
+        name = "Defragmented"
+
+    return PacketList(final, name=name)
