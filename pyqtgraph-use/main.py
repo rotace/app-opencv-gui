@@ -6,6 +6,7 @@ OpenCV-GUI implemented by pyqtgraph
 import sys
 import time
 import socket
+import struct
 import threading
 
 import numpy as np
@@ -27,62 +28,62 @@ LIBRARY = imageprocess.add_library(LIBRARY)
 LIBRARY = view.add_library(LIBRARY)
 
 
-
-class PacketCapturer(QtCore.QThread):
-    """
-    This is Packet Capturer
-    """
-    sigDataEmited = QtCore.pyqtSignal(dict)
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        # 
-        self.quit_event = threading.Event()
-        self.stop_event = threading.Event()
-
-    def run(self):
-        ## snatch thread from event loop method, when main routine wake up
-        while not self.quit_event.is_set():
-            time.sleep(0.1)
-            if self.stop_event.is_set():
-                continue
-            self._set_data()
-        ## return thread  to  event loop method, when main routine exited
-        self.exec_()
-
-    def quit_while_loop(self):
-        self.quit_event.set()
-    
-    def stop_while_loop(self):
-        self.stop_event.set()
-    
-    def start_while_loop(self):
-        self.stop_event.clear()
-
-    def is_stoped(self):
-        return self.stop_event.is_set()
-
-    def _set_data(self):
-        ## generate random input data
-        data = np.random.normal(size=(100,100))
-        data = 25 * pg.gaussianFilter(data, (5,5))
-        data += np.random.normal(size=(100,100))
-        data[40:60, 40:60] += 15.0
-        data[30:50, 30:50] += 15.0
-        image = np.zeros(shape=(100,100), dtype=np.uint8)
-        image[:,:] = data[:,:]
-        self.sigDataEmited.emit(dict(image=image))
-
-
 class PacketImporter(QtWidgets.QWidget):
     """
     This is Packet Importer
+    非ソケット通信用インポータ
+    ソケット通信をキャプチャする場合などに使用する
+    PacketCapturerは別スレッドで駆動（run() オーバーライド方式）
     """
+    class PacketCapturer(QtCore.QThread):
+        """
+        This is Packet Capturer (inner class)
+        """
+        sigDataEmited = QtCore.pyqtSignal(dict)
+
+        def __init__(self, parent=None):
+            super().__init__(parent)
+            self.quit_event = threading.Event()
+            self.stop_event = threading.Event()
+
+        def run(self):
+            ## snatch thread from event loop method, when main routine wake up
+            while not self.quit_event.is_set():
+                time.sleep(0.1)
+                if self.stop_event.is_set():
+                    continue
+                self._set_data()
+            ## return thread  to  event loop method, when main routine exited
+            self.exec_()
+
+        def quit_while_loop(self):
+            self.quit_event.set()
+        
+        def stop_while_loop(self):
+            self.stop_event.set()
+        
+        def start_while_loop(self):
+            self.stop_event.clear()
+
+        def is_stoped(self):
+            return self.stop_event.is_set()
+
+        def _set_data(self):
+            ## generate random input data
+            data = np.random.normal(size=(100,100))
+            data = 25 * pg.gaussianFilter(data, (5,5))
+            data += np.random.normal(size=(100,100))
+            data[40:60, 40:60] += 15.0
+            data[30:50, 30:50] += 15.0
+            image = np.zeros(shape=(100,100), dtype=np.uint8)
+            image[:,:] = data[:,:]
+            self.sigDataEmited.emit(dict(image=image))
+
 
     def __init__(self):
         super().__init__()
 
-        self.capturer = PacketCapturer()
+        self.capturer = self.PacketCapturer()
         self.capturer.start()
 
         self.layout = QtWidgets.QHBoxLayout()
@@ -118,12 +119,34 @@ class PacketImporter(QtWidgets.QWidget):
 class SocketImporter(QtWidgets.QWidget):
     """
     This is Socket Importer
+    ソケット通信用インポータ
+    UDPサーバは別スレッドで駆動（moveToThread方式）
     """
-    sigDataEmited = QtCore.pyqtSignal(dict)
+    class UdpServer(QtCore.QObject):
+        """
+        this inner class is UDP Server (inner class)
+        """
+        sigDataEmited = QtCore.pyqtSignal(dict)
+
+        def __init__(self, parent=None):
+            super().__init__(parent)
+
+            self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            host = self.udp_sock.getsockname()[0]
+            port = 50030
+            self.udp_sock.bind((host, port))
+
+        def recv_data(self):
+            while True:
+                buff = self.udp_sock.recv(20000)
+                row, col = struct.unpack("II", buff[:8])
+                image = np.frombuffer(buff[8:], dtype=np.uint8)
+                image = image.reshape((row, col))
+                self.sigDataEmited.emit(dict(image=image))
+
 
     def __init__(self):
         super().__init__()
-
         self.layout = QtWidgets.QGridLayout()
         self.label_host = QtWidgets.QLabel('Server Host', self)
         self.label_tcp = QtWidgets.QLabel('TCP Port', self)
@@ -144,76 +167,55 @@ class SocketImporter(QtWidgets.QWidget):
         self.tcp_sock = None
         self.udp_sock = None
 
-        self.timer = QtCore.QTimer(self)
-        self.timer.timeout.connect(self._recv_data)
-        self.timer.start(1000)
-        self.timer.stop()
+        self.udp_server = self.UdpServer()
+        self.sub_thread = QtCore.QThread()
+        self.udp_server.moveToThread(self.sub_thread)
+        self.sub_thread.started.connect(self.udp_server.recv_data)
+        self.sub_thread.start()
 
     def get_name(self):
         return 'Socket'
 
     def get_data_signal(self):
-        return self.sigDataEmited
+        return self.udp_server.sigDataEmited
 
     def is_playing(self):
-        return self.timer.isActive()
+        return self.tcp_sock is not None
     
     def play(self):
-        if self.timer.isActive():
+        if self.is_playing():
             pkt = my_scapy.MessageProtocol(dataflag='Standby')
-            self.tcp_sock.send(scapy.utils.raw(pkt))
-            time.sleep(0.1)
-            self.timer.stop()
             try:
+                self.tcp_sock.send(scapy.utils.raw(pkt))
+                time.sleep(0.1)
                 self.tcp_sock.shutdown(socket.SHUT_RDWR)
                 self.tcp_sock.close()
-                self.udp_sock.close()
+
+                self.line_edit_host.setEnabled(True)
+                self.spin_box_tcp.setEnabled(True)
+                self.tcp_sock = None
             except socket.error as e:
                 print(e)
-            self.tcp_sock = None
-            self.udp_sock = None
-                
+
         else:
+            assert self.tcp_sock is None, 'TCP Socket is survive illegally'
             host = self.line_edit_host.text()
             port = self.spin_box_tcp.value()
-            assert self.tcp_sock is None, 'TCP Socket is survive illegally'
-            assert self.udp_sock is None, 'UDP Socket is survive illegally'
+            pkt = my_scapy.MessageProtocol(dataflag='Running')
             try:
                 ## TCP Connection
                 # self.tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 # self.tcp_sock.bind(self.tcp_sock.getsockname())
                 # self.tcp_sock.connect((host, port))
                 self.tcp_sock = socket.create_connection((host, port))
+                self.tcp_sock.send(scapy.utils.raw(pkt))
 
-                ## UDP Connection
-                self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                host = self.udp_sock.getsockname()[0]
-                port = 50030
-                self.udp_sock.bind((host, port))
-
+                self.line_edit_host.setEnabled(False)
+                self.spin_box_tcp.setEnabled(False)
             except socket.error as e:
                 print(e)
                 return
             
-            pkt = my_scapy.MessageProtocol(dataflag='Running')
-            self.tcp_sock.send(scapy.utils.raw(pkt))
-            self.timer.start()
-
-    def _recv_data(self):
-        self.tcp_sock.send(b"Hello World!")
-        print( self.tcp_sock.recv(4096) )
-
-    def _set_data(self):
-        ## generate random input data
-        data = np.random.normal(size=(100,100))
-        data = 25 * pg.gaussianFilter(data, (5,5))
-        data += np.random.normal(size=(100,100))
-        data[40:60, 40:60] += 15.0
-        data[30:50, 30:50] += 15.0
-        image = np.zeros(shape=(100,100), dtype=np.uint8)
-        image[:,:] = data[:,:]
-        self.sigDataEmited.emit(dict(image=image))
-
 
 class FileImporter(QtWidgets.QWidget):
     """
@@ -329,6 +331,7 @@ class StreamController(QtWidgets.QWidget):
         self.importers.append(FileImporter())
         self.importers.append(SocketImporter())
         self.importers.append(PacketImporter())
+        self.importer = None
 
         self.tab = QtWidgets.QTabWidget()
         self.tab.currentChanged.connect(self._change_importer)
@@ -341,14 +344,13 @@ class StreamController(QtWidgets.QWidget):
 
     def _change_importer(self, index):
         # get current widget
-        importer = self.tab.currentWidget()
+        self.importer = self.tab.currentWidget()
         # stop playing all widgets
         [ i.play() for i in self.importers if i.is_playing() ]
         # disconnect all widgets
         self.btn_play.disconnect()
-        # set connect and text
+        # set connect
         self.btn_play.clicked.connect(self.play)
-        self.btn_play.clicked.connect(importer.play)
         self.btn_play.setText('|>')
         if   index == 0:
             self.btn_back.setEnabled(False)
@@ -371,7 +373,8 @@ class StreamController(QtWidgets.QWidget):
             assert False, sentence
 
     def play(self):
-        if self.btn_play.text() == '|>':
+        self.importer.play()
+        if self.importer.is_playing():
             self.btn_play.setText('||')
         else:
             self.btn_play.setText('|>')
