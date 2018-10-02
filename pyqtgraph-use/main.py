@@ -428,7 +428,7 @@ class MainForm(QtWidgets.QMainWindow):
 
         ## initial flowchart setting
         node0 = fc.createNode('ImageView', pos=(100, -150))
-        node1 = fc.createNode('Canny', pos=(0,-150))
+        node1 = fc.createNode('CvtColor', pos=(0,-150))
         dock0 = node0.get_dock()
         da.addDock(dock0)
         # fc.connectTerminals(fc['import_data'], node0['data_in'])

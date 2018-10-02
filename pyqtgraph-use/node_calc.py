@@ -25,16 +25,12 @@ class AbstractImageProcessNode(pgfclc.CtrlNode):
 
 
 class CannyNode(AbstractImageProcessNode):
-    """
-    opencv Canny
-    """
     nodeName = "Canny"
     uiTemplate = [
         ('min', 'spin', {'value': 100, 'step': 1, 'bounds': [0, None], 'int':True }),
         ('max', 'spin', {'value': 200, 'step': 1, 'bounds': [0, None], 'int':True }),
     ]
     def process(self, data_in, display=True):
-        # CtrlNode has created self.ctrls, which is a dict containing {ctrlName: widget}
         min = self.ctrls['min'].value()
         max = self.ctrls['max'].value()
         data_out = data_in
@@ -42,6 +38,48 @@ class CannyNode(AbstractImageProcessNode):
         return {'data_out': data_out}
 
 
+class CvtColorNode(AbstractImageProcessNode):
+    code_names = ['BGR', 'RGB', 'HSV', 'HLS', 'GRAY']
+    nodeName = "CvtColor"
+    uiTemplate = [
+        (
+            'type_in', 'combo',
+            {
+                'value': 'BGR',
+                'values': code_names
+            }
+        ),(
+            'type_out', 'combo',
+            {
+                'value': 'RGB',
+                'values': code_names
+            }
+        )
+    ]
+    cv2_cvt_codes = \
+        [[None, cv2.COLOR_BGR2RGB, cv2.COLOR_BGR2HSV, cv2.COLOR_BGR2HLS, cv2.COLOR_BGR2GRAY],
+         [cv2.COLOR_RGB2BGR, None, cv2.COLOR_RGB2HSV, cv2.COLOR_RGB2HLS, cv2.COLOR_RGB2GRAY],
+         [cv2.COLOR_HSV2BGR, cv2.COLOR_HSV2RGB, None, None, None],
+         [cv2.COLOR_HLS2BGR, cv2.COLOR_HLS2RGB, None, None, None],
+         [cv2.COLOR_GRAY2BGR, cv2.COLOR_GRAY2RGB, None, None, None]]
+    
+    def process(self, data_in, display=True):
+        idx_in  = self.ctrls['type_in' ].currentIndex()
+        idx_out = self.ctrls['type_out'].currentIndex()
+        data_out = data_in
+        idx_in  = self.correct_index(idx_in, len(data_in['image'].shape)==2)
+        cv2_cvt_code = self.cv2_cvt_codes[idx_in][idx_out]
+        if cv2_cvt_code is not None:
+            data_out['image'] = cv2.cvtColor(data_in['image'], cv2_cvt_code)
+        return {'data_out':data_out}
+    
+    @classmethod
+    def correct_index(cls, idx, is_gray=True):
+        if is_gray:
+            idx = len(cls.code_names)-1
+        elif idx == len(cls.code_names)-1:
+            idx = 0
+        return idx
 
 
 
@@ -65,6 +103,7 @@ class UnsharpMaskNode(AbstractImageProcessNode):
 def add_library(library):
     if isinstance( library, pgfc.NodeLibrary.NodeLibrary ):
         library.addNodeType(CannyNode , [('Process',),])
+        library.addNodeType(CvtColorNode , [('Process',),])
         library.addNodeType(UnsharpMaskNode , [('Image',), 
                                               ('Submenu_test','submenu2','submenu3')])
     return library
