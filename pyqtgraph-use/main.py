@@ -17,15 +17,15 @@ import pyqtgraph as pg
 import pyqtgraph.dockarea as pgda
 import pyqtgraph.flowchart as pgfc
 
-import imageprocess
-import view
+import node_calc
+import node_view
 import my_scapy
 import scapy
 
 # LIBRARY = pgfc.library.LIBRARY.copy() # start with the default node set
 LIBRARY = pgfc.NodeLibrary.NodeLibrary() # start with empty node set
-LIBRARY = imageprocess.add_library(LIBRARY)
-LIBRARY = view.add_library(LIBRARY)
+LIBRARY = node_calc.add_library(LIBRARY)
+LIBRARY = node_view.add_library(LIBRARY)
 
 
 class PacketImporter(QtWidgets.QWidget):
@@ -34,6 +34,9 @@ class PacketImporter(QtWidgets.QWidget):
     非ソケット通信用インポータ
     ソケット通信をキャプチャする場合などに使用する
     PacketCapturerは別スレッドで駆動（run() オーバーライド方式）
+
+    注意）run()メソッドのscapy.sendrecv.sniff()は内部でtcpdumpを使用しており、
+    OSのsudo権限がないと動作しない。
     """
     class PacketCapturer(QtCore.QThread):
         """
@@ -45,14 +48,14 @@ class PacketImporter(QtWidgets.QWidget):
             super().__init__(parent)
             self.quit_event = threading.Event()
             self.stop_event = threading.Event()
+            self.parser = my_scapy.VideoProtocolParser()
+            self.shost = 'localhost'
+            self.sport = 50030
 
         def run(self):
             ## snatch thread from event loop method, when main routine wake up
-            while not self.quit_event.is_set():
-                time.sleep(0.1)
-                if self.stop_event.is_set():
-                    continue
-                self._set_data()
+            fil_str = "udp and (dst {0}) and (port {1})".format(self.shost, self.sport)
+            scapy.sendrecv.sniff(filter=fil_str, prn=self._set_data)
             ## return thread  to  event loop method, when main routine exited
             self.exec_()
 
@@ -68,16 +71,12 @@ class PacketImporter(QtWidgets.QWidget):
         def is_stoped(self):
             return self.stop_event.is_set()
 
-        def _set_data(self):
-            ## generate random input data
-            data = np.random.normal(size=(100,100))
-            data = 25 * pg.gaussianFilter(data, (5,5))
-            data += np.random.normal(size=(100,100))
-            data[40:60, 40:60] += 15.0
-            data[30:50, 30:50] += 15.0
-            image = np.zeros(shape=(100,100), dtype=np.uint8)
-            image[:,:] = data[:,:]
-            self.sigDataEmited.emit(dict(image=image))
+        def _set_data(self, pkt):
+            pkt = pkt[my_scapy.VideoProtocol]
+            pkt.show3()
+            image = self.parser.toimage(pkt)
+            if image is not None:
+                self.sigDataEmited.emit(dict(image=image))
 
 
     def __init__(self):
@@ -137,12 +136,13 @@ class SocketImporter(QtWidgets.QWidget):
             self.udp_sock.bind((host, port))
 
         def recv_data(self):
+            parser = my_scapy.VideoProtocolParser()
             while True:
-                buff = self.udp_sock.recv(20000)
-                row, col = struct.unpack("II", buff[:8])
-                image = np.frombuffer(buff[8:], dtype=np.uint8)
-                image = image.reshape((row, col))
-                self.sigDataEmited.emit(dict(image=image))
+                buf = self.udp_sock.recv(20000)
+                pkt = my_scapy.VideoProtocol(buf)
+                image = parser.toimage(pkt)
+                if image is not None:
+                    self.sigDataEmited.emit(dict(image=image))
 
 
     def __init__(self):
@@ -330,7 +330,7 @@ class StreamController(QtWidgets.QWidget):
         self.importers.append(WebCamImporter())
         self.importers.append(FileImporter())
         self.importers.append(SocketImporter())
-        self.importers.append(PacketImporter())
+        # self.importers.append(PacketImporter())
         self.importer = None
 
         self.tab = QtWidgets.QTabWidget()

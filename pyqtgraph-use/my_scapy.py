@@ -2,7 +2,6 @@
 """
 my scapy extension
 """
-
 from collections import defaultdict
 
 from scapy.fields import *
@@ -12,6 +11,7 @@ from scapy.layers.inet import *
 from scapy.layers.rtp import *
 from scapy.utils import *
 
+import numpy as np
 from tqdm import tqdm
 
 
@@ -152,7 +152,7 @@ FLAG_DATA = {0x55555555:"Running",
 
 class MessageProtocol(Packet):
     """
-    Message Dfinition
+    Message Protocol
 
     How to Use
     LEIntField      : 4byte  32bit ( little endian )
@@ -178,6 +178,63 @@ class MessageProtocol(Packet):
         pkt = self.copy()
         pkt.remove_payload()
         pkt.show()
+
+
+class VideoProtocol(RTP):
+    """
+    Video Protocol
+
+    This is Protocol for video using RTP
+
+    """
+    def show3(self):
+        """
+        show only low layer info
+        """
+        pkt = self.copy()
+        pkt.remove_payload()
+        pkt.show()
+
+
+class VideoProtocolParser():
+    """
+    Video Protocol Parser
+
+    """
+    def __init__(self):
+        self.buffer = b""
+
+    def toimage(self, pkt):
+        assert isinstance( pkt, VideoProtocol ) , "packet is not VideoProtocol"
+        self.buffer += pkt.load
+        if pkt.marker == 1:
+            row, col = struct.unpack("II", self.buffer[:8])
+            image = np.frombuffer(self.buffer[8:], dtype=np.uint8)
+            image = image.reshape((row, col))
+            self.buffer = b""
+            return image
+        else:
+            return None
+
+    @staticmethod
+    def fromimage(image):
+        assert isinstance( image, np.ndarray ) , "image is not ndarray"
+        row = image.shape[0]
+        col = image.shape[1]
+        buf  = struct.pack("II", row, col)
+        buf += image.tostring()
+        buf_size = len(buf)
+        pkt_list = []
+        tmp_size = 1024
+        tmp_sidx = 0
+        tmp_eidx = tmp_size
+        while tmp_eidx < buf_size:
+            pkt_list.append(RTP()/buf[tmp_sidx:tmp_eidx])
+            tmp_sidx += tmp_size
+            tmp_eidx += tmp_size
+        pkt_list.append(RTP(marker=1)/buf[tmp_sidx:])
+        return pkt_list
+
 
 
 def ip_defragment(plist):
@@ -258,6 +315,7 @@ def ip_defragment(plist):
     return PacketList(final, name=name)
 
 
+
 def rtp_defragment(plist):
     """ 
     dfragment rtp packets
@@ -320,3 +378,7 @@ def rtp_defragment(plist):
         name = "Defragmented"
 
     return PacketList(final, name=name)
+
+
+bind_layers(TCP, MessageProtocol, dport=50000)
+bind_layers(UDP, VideoProtocol,   dport=50030)

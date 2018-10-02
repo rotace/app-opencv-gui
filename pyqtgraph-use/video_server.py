@@ -7,10 +7,15 @@ import threading
 
 import numpy as np
 
+import scapy
 import my_scapy
 
 
 class UdpServer():
+    """
+    This is UDP Server
+    UDP Server は別スレッドで駆動（threading.Thread()）
+    """
     def __init__(self):
         self.quit_event = threading.Event()
         self.stop_event = threading.Event()
@@ -23,15 +28,15 @@ class UdpServer():
 
     def run(self):
         while not self.quit_event.is_set():
+            time.sleep(1.0)
             if self.stop_event.is_set():
                 continue
             image = self.generate_image()
-            row = image.shape[0]
-            col = image.shape[1]
-            buff  = struct.pack("II", row, col)
-            buff += image.tostring()
-            self.sock.sendto(buff, self.addr)
-            time.sleep(1.0)
+            pkts = my_scapy.VideoProtocolParser.fromimage(image)
+            for pkt in pkts:
+                time.sleep(0.01)
+                buf = scapy.utils.raw(pkt)
+                self.sock.sendto(buf, self.addr)
 
     def quit(self):
         self.quit_event.set()
