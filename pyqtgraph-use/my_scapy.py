@@ -208,9 +208,15 @@ class VideoProtocolParser():
         assert isinstance( pkt, VideoProtocol ) , "packet is not VideoProtocol"
         self.buffer += pkt.load
         if pkt.marker == 1:
-            row, col = struct.unpack("II", self.buffer[:8])
-            image = np.frombuffer(self.buffer[8:], dtype=np.uint8)
-            image = image.reshape((row, col))
+            row, col, dim = struct.unpack("III", self.buffer[:12])
+            image = np.frombuffer(self.buffer[12:], dtype=np.uint8)
+            if   dim == 0:
+                # grayscale
+                image = image.reshape((row,col))
+            elif dim == 3:
+                image = image.reshape((row, col, dim))
+            else:
+                assert False, "unexpected image format"
             self.buffer = b""
             return image
         else:
@@ -221,7 +227,8 @@ class VideoProtocolParser():
         assert isinstance( image, np.ndarray ) , "image is not ndarray"
         row = image.shape[0]
         col = image.shape[1]
-        buf  = struct.pack("II", row, col)
+        dim = image.shape[2] if len(image.shape)==3 else 0
+        buf  = struct.pack("III", row, col, dim)
         buf += image.tostring()
         buf_size = len(buf)
         pkt_list = []

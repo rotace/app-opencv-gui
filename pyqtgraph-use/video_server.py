@@ -5,6 +5,7 @@ import socket
 import struct
 import threading
 
+import cv2
 import numpy as np
 
 import scapy
@@ -23,6 +24,8 @@ class UdpServer():
         self.addr = ('localhost', 50030)
         self.thread = threading.Thread(target = self.run)
 
+        # self.capture = cv2.VideoCapture(0)
+
         self.stop_event.set()
         self.thread.start()
 
@@ -32,6 +35,8 @@ class UdpServer():
             if self.stop_event.is_set():
                 continue
             image = self.generate_image()
+            if image is None:
+                continue
             pkts = my_scapy.VideoProtocolParser.fromimage(image)
             for pkt in pkts:
                 time.sleep(0.01)
@@ -48,13 +53,20 @@ class UdpServer():
         self.stop_event.clear()
 
     def generate_image(self):
-        ## generate random input data
+        # generate random input data
         data = np.random.normal(size=(100,100))
         data[40:60, 40:60] += 15.0
         data[30:50, 30:50] += 15.0
         image = np.zeros(shape=(100,100), dtype=np.uint8)
         image[:,:] = data[:,:]
         return image
+
+        # send camera image
+        # success, image = self.capture.read()
+        # if success:
+        #     return image
+        # else:
+        #     return None
 
 
 

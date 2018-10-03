@@ -93,7 +93,15 @@ class ImageViewNode(AbstractViewNode):
             if data_in is None:
                 self.image_view.setImage(np.zeros((1,1)))
             else:
-                self.image_view.setImage(data_in['image'].transpose((1,0)))
+                image = data_in['image']
+                if   len(image.shape) == 2:
+                    # for grayscale
+                    self.image_view.setImage(data_in['image'].transpose((1,0)))
+                elif len(image.shape) == 3:
+                    # for color
+                    self.image_view.setImage(image.transpose((1,0,2)))
+                else:
+                    assert False
 
 
 
