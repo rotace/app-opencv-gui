@@ -3,5 +3,7 @@
 *.xml
 *.log
 *.ini
+*.pcap
+*.pcapng
 __pycache__/
 .*/

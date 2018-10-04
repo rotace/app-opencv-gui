@@ -203,13 +203,17 @@ class VideoProtocolParser():
     """
     def __init__(self):
         self.buffer = b""
+        self.split_size = 4096
 
     def toimage(self, pkt):
-        assert isinstance( pkt, VideoProtocol ) , "packet is not VideoProtocol"
+        assert VideoProtocol in pkt , "packet has not VideoProtocol"
+        pkt = pkt[VideoProtocol]
         self.buffer += pkt.load
         if pkt.marker == 1:
             row, col, dim = struct.unpack("III", self.buffer[:12])
             image = np.frombuffer(self.buffer[12:], dtype=np.uint8)
+            if row * col != len(image):
+                return None
             if   dim == 0:
                 # grayscale
                 image = image.reshape((row,col))
@@ -222,8 +226,7 @@ class VideoProtocolParser():
         else:
             return None
 
-    @staticmethod
-    def fromimage(image):
+    def fromimage(self, image):
         assert isinstance( image, np.ndarray ) , "image is not ndarray"
         row = image.shape[0]
         col = image.shape[1]
@@ -232,16 +235,14 @@ class VideoProtocolParser():
         buf += image.tostring()
         buf_size = len(buf)
         pkt_list = []
-        tmp_size = 1024
         tmp_sidx = 0
-        tmp_eidx = tmp_size
+        tmp_eidx = self.split_size
         while tmp_eidx < buf_size:
             pkt_list.append(RTP()/buf[tmp_sidx:tmp_eidx])
-            tmp_sidx += tmp_size
-            tmp_eidx += tmp_size
+            tmp_sidx += self.split_size
+            tmp_eidx += self.split_size
         pkt_list.append(RTP(marker=1)/buf[tmp_sidx:])
         return pkt_list
-
 
 
 def ip_defragment(plist):
@@ -322,69 +323,32 @@ def ip_defragment(plist):
     return PacketList(final, name=name)
 
 
-
-def rtp_defragment(plist):
-    """ 
-    dfragment rtp packets
-    """
-    frags = defaultdict(lambda:[])
-    final = []
-    mark = 1
-    mark_last = 1
-
-    pos = 0
-    for p in plist:
-        p._defrag_pos = pos
-        pos += 1
-        if RTP in p:
-            rtp  = p[RTP] 
-            mark_last = mark
-            mark = rtp.marker
-            if mark_last == 0 or mark == 0:
-                rtp = p[RTP]
-                uniq = (rtp.timestamp)
-                frags[uniq].append(p)
-                continue
-        final.append(p)
-
-    defrag = []
-    for lst in six.itervalues(frags):
-        lst.sort(key=lambda x: x.sequence)
-        p = lst[0]
-        lastp = lst[-1]
-        # if p.frag > 0 or lastp.flags & 1 != 0: # first or last fragment missing
-        #     missfrag += lst
-        #     continue
-        p = p.copy()
-        rtp = p[RTP]
-        clen = len(rtp.payload)
-        txt = conf.raw_layer()
-        for q in lst[1:]:
-            clen += len(q[RTP].payload)
-            txt.add_payload(q[RTP].payload.copy())
-        else:
-            rtp.marker = 1 # !marker
-            # del(ip.chksum)
-            # del(ip.len)
-            p = p/txt
-            p._defrag_pos = max(x._defrag_pos for x in lst)
-            defrag.append(p)
-    defrag2=[]
-    for p in defrag:
-        q = p.__class__(raw(p))
-        q._defrag_pos = p._defrag_pos
-        defrag2.append(q)
-    final += defrag2
-    final.sort(key=lambda x: x._defrag_pos)
-    for p in final:
-        del(p._defrag_pos)
-
-    if hasattr(plist, "listname"):
-        name = "Defragmented %s" % plist.listname
+def load_pcap_file(filename, display = True):
+    if display:
+        pkts = []
+        with PcapReader(filename) as plist:
+            for pkt in tqdm(plist, desc="Loading Pcap   "):
+                pkts.append(pkt)
+            # filtering packets
+            pkts = [pkt for pkt in pkts if (UDP in pkt) and (VideoProtocol in pkt)]
+            plist = PacketList(pkts, name = os.path.basename(filename))
+            # IP defragment
+            plist = ip_defragment(plist)
     else:
-        name = "Defragmented"
+        plist = rdpcap(filename)
+        plist = PacketList([p for p in plist if (UDP in p) and (VideoProtocol in p)])
+        plist = defragment(plist)
 
-    return PacketList(final, name=name)
+    # convert Video
+    video = []
+    parser = VideoProtocolParser()
+    for pkt in plist:
+        image = parser.toimage(pkt)
+        if image is None:
+            continue
+        else:
+            video.append(image)
+    return video
 
 
 bind_layers(TCP, MessageProtocol, dport=50000)

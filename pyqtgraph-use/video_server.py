@@ -22,6 +22,7 @@ class UdpServer():
         self.stop_event = threading.Event()
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.addr = ('localhost', 50030)
+        self.parser = my_scapy.VideoProtocol()
         self.thread = threading.Thread(target = self.run)
 
         # self.capture = cv2.VideoCapture(0)
@@ -37,7 +38,7 @@ class UdpServer():
             image = self.generate_image()
             if image is None:
                 continue
-            pkts = my_scapy.VideoProtocolParser.fromimage(image)
+            pkts = self.parser.fromimage(image)
             for pkt in pkts:
                 time.sleep(0.01)
                 buf = scapy.utils.raw(pkt)
