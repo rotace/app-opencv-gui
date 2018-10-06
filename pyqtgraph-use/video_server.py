@@ -21,8 +21,8 @@ class UdpServer():
         self.quit_event = threading.Event()
         self.stop_event = threading.Event()
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.addr = ('localhost', 50030)
-        self.parser = my_scapy.VideoProtocol()
+        self.addr = ('localhost', my_scapy.VP_PORT)
+        self.parser = my_scapy.VideoProtocolParser()
         self.thread = threading.Thread(target = self.run)
 
         # self.capture = cv2.VideoCapture(0)
@@ -83,7 +83,7 @@ server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, True)
 # 待ち受けるアドレスとポートを指定する
 # もし任意のアドレスで Listen したいときは '' を使う
 host = 'localhost'
-port = 50000
+port = my_scapy.MP_PORT
 server_sock.bind((host, port))
 
 # クライアントをいくつまでキューイングするか

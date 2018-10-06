@@ -12,6 +12,7 @@ import threading
 
 import numpy as np
 import cv2
+from tqdm import tqdm
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
@@ -28,8 +29,71 @@ LIBRARY = pgfc.NodeLibrary.NodeLibrary() # start with empty node set
 LIBRARY = node_calc.add_library(LIBRARY)
 LIBRARY = node_view.add_library(LIBRARY)
 
+class AbstractImporter(QtWidgets.QWidget):
+    """
+    This is Abstract Importer (Interface)
+    """
+    def __init__(self):
+        super().__init__()
+        self._layout = QtWidgets.QVBoxLayout()
+        self.setLayout(self._layout)
 
-class PacketImporter(QtWidgets.QWidget):
+        lay1 = QtWidgets.QHBoxLayout()
+        wid1 = QtWidgets.QWidget()
+        wid1.setLayout(lay1)
+        wid1.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+        self.addWidget(wid1)
+
+        self.btn_back = QtWidgets.QPushButton('<<')
+        self.btn_refresh = QtWidgets.QPushButton('<>')
+        self.btn_play = QtWidgets.QPushButton('|>')
+        self.btn_step = QtWidgets.QPushButton('||>')
+        self.btn_back.clicked.connect(self.back)
+        self.btn_refresh.clicked.connect(self.refresh)
+        self.btn_play.clicked.connect(self.play)
+        self.btn_step.clicked.connect(self.step)
+        lay1.addWidget(self.btn_back)
+        lay1.addWidget(self.btn_refresh)
+        lay1.addWidget(self.btn_play)
+        lay1.addWidget(self.btn_step)
+
+        self.setEnabled(back=False, refresh=False, play=False, step=False)
+    
+    def setEnabled(self, **kwargs):
+        self.btn_back.setEnabled(kwargs.get('back', self.btn_back.isEnabled()))
+        self.btn_refresh.setEnabled(kwargs.get('refresh', self.btn_refresh.isEnabled()))
+        self.btn_play.setEnabled(kwargs.get('play', self.btn_play.isEnabled()))
+        self.btn_step.setEnabled(kwargs.get('step', self.btn_step.isEnabled()))
+
+    def addWidget(self, widget):
+        self._layout.addWidget(widget)
+    
+    def get_data_signal(self):
+        raise NotImplementedError
+
+    def get_stop_signal(self):
+        raise NotImplementedError
+    
+    def play(self):
+        if self.is_playing():
+            self.btn_play.setText('||')
+        else:
+            self.btn_play.setText('|>')
+
+    def step(self):
+        raise NotImplementedError
+
+    def back(self):
+        raise NotImplementedError
+
+    def refresh(self):
+        raise NotImplementedError
+
+    def is_playing(self):
+        raise NotImplementedError
+
+
+class PacketImporter(AbstractImporter):
     """
     This is Packet Importer
     非ソケット通信用インポータ
@@ -52,7 +116,7 @@ class PacketImporter(QtWidgets.QWidget):
             self.stop_event = threading.Event()
             self.parser = my_scapy.VideoProtocolParser()
             self.shost = 'localhost'
-            self.sport = 50030
+            self.sport = my_scapy.VP_PORT
 
         def run(self):
             ## snatch thread from event loop method, when main routine wake up
@@ -83,14 +147,13 @@ class PacketImporter(QtWidgets.QWidget):
 
     def __init__(self):
         super().__init__()
+        self.setEnabled(back=False, refresh=False, play=True, step=False)
 
         self.capturer = self.PacketCapturer()
         self.capturer.start()
 
-        self.layout = QtWidgets.QHBoxLayout()
         self.label  = QtWidgets.QLabel('Packet Importer', self)
-        self.layout.addWidget(self.label)
-        self.setLayout(self.layout)
+        self.addWidget(self.label)
 
     def get_name(self):
         return 'Packet'
@@ -109,8 +172,15 @@ class PacketImporter(QtWidgets.QWidget):
             self.capturer.start_while_loop()
         else:
             self.capturer.stop_while_loop()
+        super().play()
 
     def step(self):
+        pass
+
+    def back(self):
+        pass
+    
+    def refresh(self):
         pass
 
     def deleteLater(self):
@@ -123,7 +193,7 @@ class PacketImporter(QtWidgets.QWidget):
         super().deleteLater()
 
 
-class SocketImporter(QtWidgets.QWidget):
+class SocketImporter(AbstractImporter):
     """
     This is Socket Importer
     ソケット通信用インポータ
@@ -141,7 +211,7 @@ class SocketImporter(QtWidgets.QWidget):
 
             self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             host = self.udp_sock.getsockname()[0]
-            port = 50030
+            port = my_scapy.VP_PORT
             self.udp_sock.bind((host, port))
 
         def recv_data(self):
@@ -156,22 +226,27 @@ class SocketImporter(QtWidgets.QWidget):
 
     def __init__(self):
         super().__init__()
-        self.layout = QtWidgets.QGridLayout()
+        self.setEnabled(back=False, refresh=False, play=True, step=False)
+
+        lay1 = QtWidgets.QGridLayout()
+        wid1 = QtWidgets.QWidget()
+        wid1.setLayout(lay1)
+        self.addWidget(wid1)
+
         self.label_host = QtWidgets.QLabel('Server Host', self)
         self.label_tcp = QtWidgets.QLabel('TCP Port', self)
         self.line_edit_host = QtWidgets.QLineEdit(self)
         self.spin_box_tcp = QtWidgets.QSpinBox(self)
 
-        self.layout.addWidget(self.label_host, 0,0)
-        self.layout.addWidget(self.line_edit_host, 0,1)
-        self.layout.addWidget(self.label_tcp, 1,0)
-        self.layout.addWidget(self.spin_box_tcp, 1,1)
-        self.setLayout(self.layout)
+        lay1.addWidget(self.label_host, 0,0)
+        lay1.addWidget(self.line_edit_host, 0,1)
+        lay1.addWidget(self.label_tcp, 1,0)
+        lay1.addWidget(self.spin_box_tcp, 1,1)
 
         self.line_edit_host.setText('localhost')
         self.spin_box_tcp.setMinimum(0)
         self.spin_box_tcp.setMaximum(65535)
-        self.spin_box_tcp.setValue(50000)
+        self.spin_box_tcp.setValue(my_scapy.MP_PORT)
 
         self.tcp_sock = None
         self.udp_sock = None
@@ -227,12 +302,19 @@ class SocketImporter(QtWidgets.QWidget):
             except socket.error as e:
                 print(e)
                 return
+        super().play()
     
     def step(self):
         pass
+    
+    def back(self):
+        pass
+    
+    def refresh(self):
+        pass
             
 
-class FileImporter(QtWidgets.QWidget):
+class FileImporter(AbstractImporter):
     """
     This is File Importer
     """
@@ -245,39 +327,42 @@ class FileImporter(QtWidgets.QWidget):
         self.dirname = os.getcwd()
         self.video = None
         self.video_itr = None
-        self.video_idx = 0
+        self.image = None
 
-        self.layout = QtWidgets.QVBoxLayout()
-        self.up_widget = QtWidgets.QWidget()
-        self.up_layout = QtWidgets.QHBoxLayout()
-        self.dw_widget = QtWidgets.QWidget()
-        self.dw_layout = QtWidgets.QHBoxLayout()
-        self.layout.addWidget(self.up_widget)
-        self.layout.addWidget(self.dw_widget)
-        self.setLayout(self.layout)
-        
+        self.setEnabled(back=True, refresh=True, play=True, step=True)
+
+        # Widget1
+        lay1 = QtWidgets.QHBoxLayout()
+        wid1 = QtWidgets.QWidget()
+        wid1.setLayout(lay1)
+        self.addWidget(wid1)
+
         self.label_file = QtWidgets.QLabel('File', self)
         self.line_edit_file = QtWidgets.QLineEdit(self)
         self.line_edit_file.setEnabled(False)
         self.tool_button_file = QtWidgets.QToolButton(self)
         self.tool_button_file.clicked.connect(self._open_file)
+        lay1.addWidget(self.label_file)
+        lay1.addWidget(self.line_edit_file)
+        lay1.addWidget(self.tool_button_file)
 
-        self.up_layout.addWidget(self.label_file)
-        self.up_layout.addWidget(self.line_edit_file)
-        self.up_layout.addWidget(self.tool_button_file)
-        self.up_widget.setLayout(self.up_layout)
-
+        # Widget2
+        lay2 = QtWidgets.QHBoxLayout()
+        wid2 = QtWidgets.QWidget()
+        wid2.setLayout(lay2)
+        self.addWidget(wid2)
+       
         self.h_slider = QtWidgets.QSlider()
         self.spin_box = QtWidgets.QSpinBox()
         self.h_slider.setOrientation(QtCore.Qt.Horizontal)
         self.h_slider.setEnabled(False)
         self.spin_box.setEnabled(False)
-        self.dw_layout.addWidget(self.h_slider)
-        self.dw_layout.addWidget(self.spin_box)
         self.h_slider.valueChanged.connect(self.spin_box.setValue)
         self.spin_box.valueChanged.connect(self.h_slider.setValue)
-        self.dw_widget.setLayout(self.dw_layout)
+        lay2.addWidget(self.h_slider)
+        lay2.addWidget(self.spin_box)
 
+        # Timer
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self._update)
         self.timer.start(100)
@@ -288,24 +373,40 @@ class FileImporter(QtWidgets.QWidget):
             self,
             'Open Video File',
             self.dirname,
-            "All (*);;Pcap files (*.pcap *.pcapng)"
+            "All (*)"
+            + ";;Pcap files (*.pcap *.pcapng)"
+            + ";;Video files (*.mp4)"
             )
         if len(filename_list[0]) == 0:
-            pass
+            return
         else:
             self.filename = filename_list[0]
             self.dirname = os.path.dirname(self.filename)
             self.line_edit_file.setText(self.filename)
 
             _, ext = os.path.splitext(self.filename)
-
-            if ext in {"", ".pcap", ".pcapng"}:
+            if    ext in {"", ".pcap", ".pcapng"}:
                 # Load pcap/pcapng
                 self.video = my_scapy.load_pcap_file(self.filename)
-                self.h_slider.setMaximum(len(self.video))
-                self.spin_box.setMaximum(len(self.video))
+            elif  ext in {".mp4"}:
+                cap = cv2.VideoCapture(self.filename)
+                self.video = []
+                frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+                pbar = tqdm(total=frame_count, desc="Loading Video")
+                while cap.isOpened():
+                    ret, image = cap.read()
+                    pbar.update(1)
+                    if ret:
+                        self.video.append(image)
+                    else:
+                        break
+                pbar.close()
+                cap.release()
             else:
                 self.video = None
+                return
+            self.h_slider.setMaximum(len(self.video))
+            self.spin_box.setMaximum(len(self.video))
 
     def get_name(self):
         return 'File'
@@ -327,44 +428,52 @@ class FileImporter(QtWidgets.QWidget):
             self.h_slider.setEnabled(True)
             self.spin_box.setEnabled(True)
         else:
+            if self.spin_box.value() >= len(self.video):
+                self.spin_box.setValue(0)
             self.h_slider.setEnabled(False)
             self.spin_box.setEnabled(False)
-            self.video_idx = self.spin_box.value()
-            self.video_itr = iter(self.video[self.video_idx:])
+            idx = self.spin_box.value()
+            self.video_itr = iter(self.video[idx:])
             self.timer.start()
+        super().play()
 
     def step(self):
         if self.video is None:
             return
-        self.video_idx = self.spin_box.value()
-        self.video_itr = iter(self.video[self.video_idx:])
+        idx = self.spin_box.value()
+        self.video_itr = iter(self.video[idx:])
         self._update()
+    
+    def back(self):
+        self.spin_box.setValue(0)
+    
+    def refresh(self):
+        if self.image is not None:
+            self.sigDataEmited.emit(dict(image=self.image))
 
     def _update(self):
         try:
-            image = next(self.video_itr)
-            self.video_idx += 1
-            self.spin_box.setValue(self.video_idx)
-            if image is not None:
-                self.sigDataEmited.emit(dict(image=image))
+            self.image = next(self.video_itr)
+            idx = self.spin_box.value()
+            self.spin_box.setValue(idx+1)
+            if self.image is not None:
+                self.sigDataEmited.emit(dict(image=self.image))
         except StopIteration:
             self.sigPlayStoped.emit()
 
 
-class WebCamImporter(QtWidgets.QWidget):
+class WebCamImporter(AbstractImporter):
     """
     This is USB WebCam Importer
     """
     sigDataEmited = QtCore.pyqtSignal(dict)
-    sigPlayStoped = QtCore.pyqtSignal()
 
     def __init__(self):
         super().__init__()
+        self.setEnabled(back=False, refresh=False, play=True, step=False)
 
-        self.layout = QtWidgets.QHBoxLayout()
         self.label  = QtWidgets.QLabel('WebCam Importer', self)
-        self.layout.addWidget(self.label)
-        self.setLayout(self.layout)
+        self.addWidget(self.label)
 
         self.capture = cv2.VideoCapture(0)
 
@@ -378,9 +487,6 @@ class WebCamImporter(QtWidgets.QWidget):
     def get_data_signal(self):
         return self.sigDataEmited
 
-    def get_stop_signal(self):
-        return self.sigPlayStoped
-
     def is_playing(self):
         return self.timer.isActive()
 
@@ -389,9 +495,16 @@ class WebCamImporter(QtWidgets.QWidget):
             self.timer.stop()
         else:
             self.timer.start()
+        super().play()
 
     def step(self):
         self._update()
+
+    def back(self):
+        pass
+    
+    def refresh(self):
+        pass
 
     def _update(self):
         success, image = self.capture.read()
@@ -399,7 +512,7 @@ class WebCamImporter(QtWidgets.QWidget):
             self.sigDataEmited.emit(dict(image=image))
 
 
-class StreamController(QtWidgets.QWidget):
+class StreamController(QtWidgets.QTabWidget):
     """
     This is Controller which handle webcamera, ethernet, etc.
     """
@@ -407,20 +520,7 @@ class StreamController(QtWidgets.QWidget):
         super().__init__(parent)
 
         self.flowchart = flowchart
-        self.layout = QtWidgets.QVBoxLayout()
-        self.setLayout(self.layout)
 
-        self.player = QtWidgets.QWidget()
-        self.btn_back = QtWidgets.QPushButton('<<')
-        self.btn_play = QtWidgets.QPushButton('|>')
-        self.btn_step = QtWidgets.QPushButton('||>')
-        player_layout = QtWidgets.QHBoxLayout()
-        player_layout.addWidget(self.btn_back)
-        player_layout.addWidget(self.btn_play)
-        player_layout.addWidget(self.btn_step)
-        self.player.setLayout(player_layout)
-        self.layout.addWidget(self.player)
-        
         self.importers = []
         self.importers.append(WebCamImporter())
         self.importers.append(FileImporter())
@@ -428,59 +528,22 @@ class StreamController(QtWidgets.QWidget):
         # self.importers.append(PacketImporter())
         self.importer = None
 
-        self.tab = QtWidgets.QTabWidget()
-        self.tab.currentChanged.connect(self._change_importer)
-        [ self.tab.addTab(i, i.get_name()) for i in self.importers ]
-        [ i.get_data_signal().connect(self._set_data) for i in self.importers ]
-        [ i.get_stop_signal().connect(self.play     ) for i in self.importers ]
+        self.currentChanged.connect(self._change_importer)
+        [ self.addTab(i, i.get_name()) for i in self.importers ]
+        [ i.get_data_signal().connect(self.set_data) for i in self.importers ]
         [ i.play() for i in self.importers if i.is_playing() ]
-        self.layout.addWidget(self.tab)
         
         self._change_importer(0)
 
     def _change_importer(self, index):
-        # get current widget
-        self.importer = self.tab.currentWidget()
         # stop playing all widgets
         [ i.play() for i in self.importers if i.is_playing() ]
-        # disconnect all widgets
-        self.btn_play.disconnect()
-        self.btn_step.disconnect()
-        # set connect
-        self.btn_play.clicked.connect(self.play)
-        self.btn_step.clicked.connect(self.step)
-        self.btn_play.setText('|>')
-        if   index == 0:
-            self.btn_back.setEnabled(False)
-            self.btn_step.setEnabled(True)
+        # get current widget
+        self.importer = self.currentWidget()
 
-        elif index == 1:
-            self.btn_back.setEnabled(True)
-            self.btn_step.setEnabled(True)
 
-        elif index == 2:
-            self.btn_back.setEnabled(False)
-            self.btn_step.setEnabled(False)
 
-        elif index == 3:
-            self.btn_back.setEnabled(False)
-            self.btn_step.setEnabled(False)
-
-        else:
-            sentence = 'Assertion Failed: index:{0}'.format(index)
-            assert False, sentence
-
-    def play(self):
-        self.importer.play()
-        if self.importer.is_playing():
-            self.btn_play.setText('||')
-        else:
-            self.btn_play.setText('|>')
-
-    def step(self):
-        self.importer.step()
-
-    def _set_data(self, data):
+    def set_data(self, data):
         ## Set the raw data as the input value to the flowchart
         self.flowchart.setInput(import_data=data)
 

@@ -206,8 +206,14 @@ class VideoProtocolParser():
         self.split_size = 4096
 
     def toimage(self, pkt):
-        assert VideoProtocol in pkt , "packet has not VideoProtocol"
-        pkt = pkt[VideoProtocol]
+        assert isinstance(pkt, Packet), "pkt is not Packet"
+        if    VideoProtocol in pkt:
+            pkt = pkt[VideoProtocol]
+        elif RTP in pkt:
+            pkt = VideoProtocol(raw(pkt[RTP]))
+        else:
+            assert False, "pkt has not VideoProtocol"
+
         self.buffer += pkt.load
         if pkt.marker == 1:
             row, col, dim = struct.unpack("III", self.buffer[:12])
@@ -238,10 +244,10 @@ class VideoProtocolParser():
         tmp_sidx = 0
         tmp_eidx = self.split_size
         while tmp_eidx < buf_size:
-            pkt_list.append(RTP()/buf[tmp_sidx:tmp_eidx])
+            pkt_list.append(VideoProtocol()/buf[tmp_sidx:tmp_eidx])
             tmp_sidx += self.split_size
             tmp_eidx += self.split_size
-        pkt_list.append(RTP(marker=1)/buf[tmp_sidx:])
+        pkt_list.append(VideoProtocol(marker=1)/buf[tmp_sidx:])
         return pkt_list
 
 
@@ -351,5 +357,7 @@ def load_pcap_file(filename, display = True):
     return video
 
 
-bind_layers(TCP, MessageProtocol, dport=50000)
-bind_layers(UDP, VideoProtocol,   dport=50030)
+MP_PORT = 50000
+VP_PORT = 50030
+bind_layers(TCP, MessageProtocol, dport=MP_PORT)
+bind_layers(UDP, VideoProtocol,   dport=VP_PORT)

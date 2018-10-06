@@ -74,13 +74,16 @@ class CvtColorNode(AbstractImageProcessNode):
         return {'data_out':data_out}
     
     @classmethod
-    def correct_index(cls, idx, is_gray=True):
+    def correct_index(cls, idx, is_gray):
+        """
+        if image is grayscale -> idx be corrected GRAY idx
+        if image is not grayscale and idx is grayscale -> idx be corrected RGB idx
+        """
         if is_gray:
-            idx = len(cls.code_names)-1
-        elif idx == len(cls.code_names)-1:
-            idx = 0
+            idx = cls.code_names.index('GRAY')
+        if not is_gray and idx == cls.code_names.index('GRAY'):
+            idx = cls.code_names.index('BGR')
         return idx
-
 
 
 class UnsharpMaskNode(AbstractImageProcessNode):
