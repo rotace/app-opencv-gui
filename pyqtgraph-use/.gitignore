@@ -6,5 +6,6 @@
 *.pcap
 *.pcapng
 *.mp4
+*.fc
 __pycache__/
 .*/
