@@ -1,0 +1,3 @@
+[submodule "pyqtgraph-use/deps/pyqtgraph"]
+	path = pyqtgraph-use/deps/pyqtgraph
+	url = git@github.com:stock-of-rotace/pyqtgraph

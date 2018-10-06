@@ -4,12 +4,9 @@ import threading
 import cv2
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-import pyqtgraph as pg
-import pyqtgraph.flowchart as pgfc
-# extension of pyqtgraph ( = exchange library )
-import my_pyqtgraph.flowchart.library.common as pgfclc
-# customize of pyqtgraph ( = addition library )
-import my_pyqtgraph as mypg
+import deps.pyqtgraph.pyqtgraph as pg
+import deps.pyqtgraph.pyqtgraph.flowchart as pgfc
+import deps.pyqtgraph.pyqtgraph.flowchart.library.common as pgfclc
 
 
 class AbstractCalcNode(pgfclc.CtrlNode):

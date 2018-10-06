@@ -1,11 +1,9 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
-import pyqtgraph as pg
-import pyqtgraph.flowchart as pgfc
-import pyqtgraph.dockarea as pgda
-# extension of pyqtgraph ( = exchange library )
-import my_pyqtgraph.flowchart.library.common as pgfclc
-# customize of pyqtgraph ( = addition library )
-import my_pyqtgraph as mypg
+import deps.pyqtgraph.pyqtgraph as pg
+import deps.pyqtgraph.pyqtgraph.flowchart as pgfc
+import deps.pyqtgraph.pyqtgraph.dockarea as pgda
+import deps.pyqtgraph.pyqtgraph.flowchart.library.common as pgfclc
+import my_pyqtgraph
 
 
 class SubWindow(QtWidgets.QDialog):
@@ -81,7 +79,7 @@ class ImageViewNode(AbstractViewNode):
             self.image_view = pg.ImageView()
         else:
             ## my_pyqtgraph's  ImageView
-            self.image_view = mypg.ImageView()
+            self.image_view = my_pyqtgraph.ImageView()
 
         self.set_view(self.image_view)
 

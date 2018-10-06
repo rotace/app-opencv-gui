@@ -15,9 +15,9 @@ import cv2
 from tqdm import tqdm
 
 from PyQt5 import QtCore, QtGui, QtWidgets
-import pyqtgraph as pg
-import pyqtgraph.dockarea as pgda
-import pyqtgraph.flowchart as pgfc
+import deps.pyqtgraph.pyqtgraph as pg
+import deps.pyqtgraph.pyqtgraph.dockarea as pgda
+import deps.pyqtgraph.pyqtgraph.flowchart as pgfc
 
 import node_calc
 import node_view

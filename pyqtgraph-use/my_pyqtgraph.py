@@ -1,5 +1,5 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
-import pyqtgraph as pg
+import deps.pyqtgraph.pyqtgraph as pg
 
 
 class ImageView(QtWidgets.QWidget):
