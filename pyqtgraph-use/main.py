@@ -7,6 +7,7 @@ import os
 import sys
 import time
 import socket
+import select
 import struct
 import threading
 
@@ -197,31 +198,57 @@ class SocketImporter(AbstractImporter):
     """
     This is Socket Importer
     ソケット通信用インポータ
-    UDPサーバは別スレッドで駆動（moveToThread方式）
+    UDPサーバは別スレッドで駆動
     """
-    class UdpServer(QtCore.QObject):
+    class UdpServer(QtCore.QThread):
         """
         this inner class is UDP Server (inner class)
+        Always monitor UDP port 50030 (my_scapy.VP_PORT)
         """
         sigDataEmited = QtCore.pyqtSignal(dict)
-        sigPlayStoped = QtCore.pyqtSignal()
+        sigPlayStoped = QtCore.pyqtSignal() # not used
+        read_waiters = {}
 
         def __init__(self, parent=None):
             super().__init__(parent)
-
+            # set parser (queue)
+            self.parser = my_scapy.VideoProtocolParser()
+            # set socket
             self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             host = self.udp_sock.getsockname()[0]
             port = my_scapy.VP_PORT
             self.udp_sock.bind((host, port))
+            # wait data
+            self.read_waiters[self.udp_sock.fileno()] = (self.recv_handler, ())
 
-        def recv_data(self):
-            parser = my_scapy.VideoProtocolParser()
+        def run(self):
             while True:
-                buf = self.udp_sock.recv(20000)
-                pkt = my_scapy.RTP(buf)
-                image = parser.toimage(pkt)
-                if image is not None:
-                    self.sigDataEmited.emit(dict(image=image))
+                # handle signal/slot
+                QtCore.QCoreApplication.processEvents()
+                # set handler
+                rlist, _, _ = select.select(
+                    self.read_waiters.keys(),
+                    [],
+                    [],
+                    60)
+                # handle socket
+                for r_fileno in rlist:
+                    handler, args = self.read_waiters.pop(r_fileno)
+                    handler(*args)
+
+        def recv_handler(self):
+            # receive data
+            buf = self.udp_sock.recv(20000)
+            pkt = my_scapy.RTP(buf)
+            image = self.parser.toimage(pkt)
+            # emit data
+            if image is not None:
+                self.sigDataEmited.emit(dict(image=image))
+            # wait next data
+            self.read_waiters[self.udp_sock.fileno()] = (
+                self.recv_handler,  # handler
+                ()                  # handler args
+                )
 
 
     def __init__(self):
@@ -249,13 +276,8 @@ class SocketImporter(AbstractImporter):
         self.spin_box_tcp.setValue(my_scapy.MP_PORT)
 
         self.tcp_sock = None
-        self.udp_sock = None
-
         self.udp_server = self.UdpServer()
-        self.sub_thread = QtCore.QThread()
-        self.udp_server.moveToThread(self.sub_thread)
-        self.sub_thread.started.connect(self.udp_server.recv_data)
-        self.sub_thread.start()
+        self.udp_server.start()
 
     def get_name(self):
         return 'Socket'

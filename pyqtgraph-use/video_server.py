@@ -1,5 +1,6 @@
 # coding: utf-8
 
+import sys
 import time
 import socket
 import struct
@@ -31,8 +32,7 @@ class UdpServer():
         self.thread.start()
 
     def run(self):
-        while not self.quit_event.is_set():
-            time.sleep(1.0)
+        while not self.quit_event.wait(timeout=1.0):
             if self.stop_event.is_set():
                 continue
             image = self.generate_image()
@@ -71,6 +71,53 @@ class UdpServer():
 
 
 
+def loop():
+    while True:
+        # クライアントからの接続を待ち受ける (接続されるまでブロックする)
+        client_sock, (client_addr, client_port) = server_sock.accept()
+        print('New client: {0}:{1}'.format(client_addr, client_port))
+
+        while True:
+            # クライアントソケットから指定したバッファバイト数だけデータを受け取る
+            try:
+                # ヘッダ(データサイズ)を読み取る
+                header = client_sock.recv(4)
+                if len(header) == 0:
+                    break
+                datasize = struct.unpack('<I', header)[0]
+                # メッセージを読み取る
+                message = client_sock.recv(datasize-4)
+                if len(message) == 0:
+                    break
+
+                # パケットに変換
+                pkt = my_scapy.MessageProtocol(header + message)
+
+                # Message is Running
+                if pkt.dataflag == 0x55555555:
+                    udp_server.start()
+                    print('Recv: Running')
+                # Message is Standby
+                elif pkt.dataflag == 0xffffffff:
+                    udp_server.stop()
+                    print('Recv: Standby')
+                
+            except OSError:
+                break
+
+            # # 受信したデータの長さが 0 ならクライアントからの切断を表す
+            # if len(message) == 0:
+            #     break
+
+            # # 受信したデータをそのまま送り返す (エコー)
+            # client_sock.sendall(message)
+            # print('Send: {}'.format(message))
+
+        # 後始末
+        client_sock.close()
+        print('Bye-Bye: {0}:{1}'.format(client_addr, client_port))
+
+
 # udp server
 udp_server = UdpServer()
 
@@ -89,47 +136,10 @@ server_sock.bind((host, port))
 # クライアントをいくつまでキューイングするか
 server_sock.listen(1)
 
-while True:
-    # クライアントからの接続を待ち受ける (接続されるまでブロックする)
-    client_sock, (client_addr, client_port) = server_sock.accept()
-    print('New client: {0}:{1}'.format(client_addr, client_port))
-
-    while True:
-        # クライアントソケットから指定したバッファバイト数だけデータを受け取る
-        try:
-            # ヘッダ(データサイズ)を読み取る
-            header = client_sock.recv(4)
-            if len(header) == 0:
-                break
-            datasize = struct.unpack('<I', header)[0]
-            # メッセージを読み取る
-            message = client_sock.recv(datasize-4)
-            if len(message) == 0:
-                break
-
-            # パケットに変換
-            pkt = my_scapy.MessageProtocol(header + message)
-
-            # Message is Running
-            if pkt.dataflag == 0x55555555:
-                udp_server.start()
-                print('Recv: Running')
-            # Message is Standby
-            elif pkt.dataflag == 0xffffffff:
-                udp_server.stop()
-                print('Recv: Standby')
-            
-        except OSError:
-            break
-
-        # # 受信したデータの長さが 0 ならクライアントからの切断を表す
-        # if len(message) == 0:
-        #     break
-
-        # # 受信したデータをそのまま送り返す (エコー)
-        # client_sock.sendall(message)
-        # print('Send: {}'.format(message))
-
-    # 後始末
-    client_sock.close()
-    print('Bye-Bye: {0}:{1}'.format(client_addr, client_port))
+try:
+    loop()
+except KeyboardInterrupt:
+    print("")
+    print("Ctrl+C is pressed. Now terminating thread. Please Wait...")
+    udp_server.quit()
+    sys.exit()
